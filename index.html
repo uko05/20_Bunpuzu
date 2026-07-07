@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>原神・スタレの分布図メーカー - うーこの部屋</title>
+
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/favicon_io/favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/favicon_io/apple-touch-icon.png">
+
+  <style>
+    /* ① ローカルフォント */
+    @font-face {
+      font-family: 'MihoyoZenZero';
+      src: url('font/mihoyo-zenzero.ttf') format('truetype');
+    }
+
+    :root {
+      --bg:      #f4f4f9;
+      --surface: #ffffff;
+      --surface2:#eeeeee;
+      --accent:  #ffcc00;
+      --text:    #333333;
+      --muted:   #888888;
+      --border:  #dddddd;
+      --font:    'MihoyoZenZero','Hiragino Kaku Gothic ProN','Meiryo',sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Header ===== */
+    header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--accent);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .header-top {
+      min-height: 56px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .header-top h1 { font-size: 1rem; font-weight: bold; color: var(--text); letter-spacing: .05em; }
+    .lang-switch {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      display: flex; gap: 8px; font-size: .8rem;
+    }
+    .lang-switch label { display: flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
+
+    /* ===== Game tabs (equal width) ===== */
+    .game-tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .game-tab-btn {
+      flex: 1; background: none; border: none; border-bottom: 3px solid transparent;
+      padding: 10px 6px; font-family: var(--font); font-size: .85rem; color: var(--muted);
+      cursor: pointer; transition: color .15s, border-color .15s; text-align: center; margin-bottom: -1px;
+    }
+    .game-tab-btn:hover { color: var(--text); }
+    .game-tab-btn.active {
+      color: var(--text); border-bottom-color: var(--accent); font-weight: bold;
+      background: rgba(255,204,0,.1);
+    }
+
+    /* ===== Element tabs (equal width) ===== */
+    .elem-tab-bar { display: flex; background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .elem-tab-btn {
+      flex: 1; background: none; border: none; border-bottom: 3px solid transparent;
+      padding: 5px 4px; font-family: var(--font); font-size: .72rem; color: var(--muted);
+      cursor: pointer; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 2px; transition: background .15s, color .15s;
+    }
+    .elem-tab-btn img { width: 24px; height: 24px; object-fit: contain; pointer-events: none; }
+    .elem-tab-btn.active { background: var(--surface); color: var(--text); font-weight: bold; border-bottom-color: var(--accent); }
+
+    /* ===== Char list (horizontal reel) ===== */
+    .char-list {
+      display: flex; flex-wrap: nowrap; gap: 5px; padding: 8px;
+      background: var(--surface); overflow-x: auto; overflow-y: hidden;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none; cursor: grab; align-items: center;
+      -webkit-overflow-scrolling: touch;
+    }
+    .char-list::-webkit-scrollbar { display: none; }
+    .char-list.reel-grabbing { cursor: grabbing; }
+    .reel-divider {
+      flex-shrink: 0; width: 5px; height: 80px;
+      align-self: center; margin: 0 8px;
+      background: var(--accent); border-radius: 3px; opacity: .7;
+    }
+    .char-thumb {
+      width: 94px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      cursor: grab; border-radius: 6px; border: 2px solid transparent; padding: 2px;
+      transition: border-color .15s; user-select: none; touch-action: none;
+    }
+    .char-thumb:hover { border-color: rgba(255,204,0,.6); }
+    .char-thumb.dragging-active { border-color: var(--accent); opacity: .5; }
+    .char-thumb img {
+      width: 90px; height: 90px; object-fit: cover; border-radius: 4px;
+      pointer-events: none; background: var(--surface2); display: block;
+    }
+    .char-thumb span {
+      font-size: .5rem; color: var(--muted); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 60px; text-align: center; pointer-events: none;
+    }
+    .upload-thumb {
+      width: 62px; min-height: 76px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px; cursor: pointer;
+      border-radius: 6px; border: 2px dashed var(--border); padding: 4px;
+      font-size: .65rem; color: var(--muted); transition: border-color .15s, color .15s;
+    }
+    .upload-thumb:hover { border-color: var(--accent); color: var(--text); }
+    .upload-thumb .plus { font-size: 1.4rem; line-height: 1; }
+    #char-list-sonota { justify-content: center; }
+
+    /* ===== Options bar ===== */
+    .options-bar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 7px 12px; display: flex; align-items: center; flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+    }
+    .opts-left  { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .opts-right { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
+    .opts-right .sns-link img { width: 28px; height: 28px; border-radius: 6px; display: block; transition: opacity .15s; }
+    .opts-right .sns-link:hover img { opacity: .75; }
+    .options-bar label { display: flex; align-items: center; gap: 4px; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+    #preset-select {
+      font-family: var(--font); font-size: .82rem; color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+      background: var(--surface); cursor: pointer; max-width: 60vw;
+    }
+    #save-btn {
+      background: var(--accent); border: none; border-radius: 6px;
+      padding: 6px 14px; font-family: var(--font); font-size: .85rem; font-weight: bold;
+      cursor: pointer; color: var(--text); transition: opacity .15s; flex-shrink: 0;
+    }
+    #save-btn:hover { opacity: .8; }
+
+    /* ===== Canvas wrap ===== */
+    #canvas-wrap { flex: 1; overflow: auto; background: var(--bg); padding: 24px; min-height: 0; }
+    #canvas-area {
+      position: relative; width: max-content; min-width: 100%;
+      display: flex; justify-content: center;
+    }
+
+    /* ===== Chart card (distribution chart content) ===== */
+    #chart-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 46px 600px 46px;
+      grid-template-rows: auto auto 460px auto;
+      gap: 10px;
+      background: var(--surface);
+      padding: 16px;
+      border-radius: 10px;
+    }
+    .chart-field {
+      font-family: var(--font); color: var(--text); outline: none; cursor: text;
+      overflow-wrap: anywhere;
+    }
+    .chart-field[contenteditable]:empty::before {
+      content: attr(data-placeholder); color: var(--muted); pointer-events: none;
+    }
+    #chart-title-box {
+      grid-column: 1 / 4; grid-row: 1;
+      background: #f8dfc7; border: 1.5px solid #e0b487; border-radius: 10px;
+      padding: 10px 20px; font-size: 1.2rem; font-weight: bold; text-align: center;
+      min-height: 1.5em;
+    }
+    #chart-title-box:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
+    .axis-box-h {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 6px 22px; font-size: .95rem; font-weight: bold; text-align: center;
+      min-height: 1.4em; min-width: 200px; max-width: 560px;
+      grid-column: 2; justify-self: center;
+    }
+    .axis-box-h:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
+    #chart-top-box { grid-row: 2; }
+    #chart-bottom-box { grid-row: 4; }
+    .axis-box-v {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+      grid-row: 3; width: 46px;
+      display: flex; align-items: center; justify-content: center;
+      writing-mode: vertical-rl; text-orientation: upright;
+      font-size: .82rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
+      padding: 10px 4px;
+    }
+    .axis-box-v:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
+    #chart-left-box  { grid-column: 1; }
+    #chart-right-box { grid-column: 3; }
+
+    /* ===== Quadrant field (drop zone) ===== */
+    #quadrant-field {
+      grid-column: 2; grid-row: 3;
+      position: relative; width: 600px; height: 460px;
+      background: var(--surface); overflow: visible;
+    }
+    #quadrant-field.drag-over { box-shadow: inset 0 0 0 3px rgba(255,204,0,.4); }
+    #crosshair-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+    /* ===== Placed items ===== */
+    .placed-item {
+      position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      cursor: pointer; user-select: none; z-index: 10; touch-action: none;
+    }
+    .placed-item img {
+      object-fit: cover; border-radius: 6px; border: 2px solid var(--border);
+      background: var(--surface2); pointer-events: none; display: block;
+    }
+    .placed-text {
+      font-size: .62rem; color: var(--text); text-align: center; word-break: break-all;
+      min-height: 14px; background: rgba(255,255,255,.9); border-radius: 3px;
+      padding: 1px 3px; pointer-events: none; line-height: 1.3; max-width: 200px;
+    }
+
+    /* ===== Popup ===== */
+    #popup-menu {
+      position: fixed; z-index: 1000; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2); padding: 5px;
+      display: none; flex-direction: column; gap: 3px; min-width: 130px;
+    }
+    .popup-btn {
+      background: none; border: 1px solid var(--border); border-radius: 5px;
+      padding: 7px 10px; font-family: var(--font); font-size: .82rem;
+      cursor: pointer; text-align: left; transition: background .1s; width: 100%;
+    }
+    .popup-btn:hover { background: var(--surface2); }
+    .popup-btn.danger { color: #dc3545; }
+    .popup-resize-row { display: flex; gap: 3px; }
+    .popup-resize-row .popup-btn { flex: 1; text-align: center; }
+
+    /* ===== Crop modal ===== */
+    #crop-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.78);
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px; z-index: 3000;
+    }
+    #crop-modal.open { display: flex; }
+    .crop-title { color: #fff; font-family: var(--font); font-size: .9rem; }
+    .crop-frame {
+      width: 280px; height: 280px; overflow: hidden; position: relative;
+      border: 3px solid var(--accent); border-radius: 6px; background: #111;
+      cursor: grab; touch-action: none;
+    }
+    .crop-frame:active { cursor: grabbing; }
+    .crop-frame img { position: absolute; transform-origin: 0 0; pointer-events: none; user-select: none; }
+    .crop-zoom-row { display: flex; align-items: center; gap: 10px; }
+    .crop-zoom-row label { color: #ccc; font-family: var(--font); font-size: .78rem; }
+    #crop-zoom { width: 160px; }
+    .crop-actions { display: flex; gap: 10px; }
+    .crop-actions button {
+      font-family: var(--font); font-size: .85rem; padding: 8px 20px;
+      border-radius: 6px; border: none; cursor: pointer;
+    }
+    #crop-ok     { background: var(--accent); font-weight: bold; }
+    #crop-cancel { background: #555; color: #fff; }
+
+    /* ===== Drag ghost ===== */
+    #drag-ghost {
+      position: fixed; pointer-events: none; z-index: 9999;
+      display: none; transform: translate(-28px,-28px);
+    }
+    #drag-ghost img {
+      width: 56px; height: 56px; object-fit: cover;
+      border-radius: 6px; border: 2px solid var(--accent); opacity: .85; display: block;
+    }
+
+    /* ===== Text edit popup ===== */
+    #text-edit-popup {
+      position: fixed; z-index: 1001; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2); padding: 12px;
+      display: none; flex-direction: column; gap: 8px; min-width: 230px;
+    }
+    .text-edit-label { font-size: .78rem; color: var(--muted); }
+    #text-edit-input {
+      font-family: var(--font); font-size: .9rem;
+      border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; outline: none; width: 100%;
+    }
+    #text-edit-input:focus { border-color: var(--accent); }
+    .text-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .text-edit-actions button {
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      padding: 5px 12px; font-family: var(--font); font-size: .82rem; cursor: pointer;
+    }
+    .text-edit-actions button.ok { background: var(--accent); border-color: var(--accent); font-weight: bold; }
+
+    /* ===== Canvas hint ===== */
+    #canvas-hint {
+      position: absolute; top: -8px; left: -8px; transform: translateY(-100%);
+      color: var(--muted); font-size: .78rem; text-align: left;
+      line-height: 1.9; pointer-events: none; user-select: none; white-space: nowrap;
+      opacity: .55;
+    }
+
+    /* ===== Mobile ===== */
+    @media (max-width: 768px) {
+      body { height: 100dvh; overflow: hidden; }
+      #top-controls {
+        flex-shrink: 0; overflow-y: auto; max-height: 55dvh;
+        scrollbar-width: none;
+      }
+      #top-controls::-webkit-scrollbar { display: none; }
+      #canvas-wrap { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+      .header-top { padding: 6px 10px; }
+      .header-top h1 { font-size: .72rem; }
+      .options-bar { flex-wrap: wrap; padding: 5px 8px; gap: 6px; }
+      .opts-left { flex: 1 1 100%; justify-content: center; }
+      #save-btn { flex: 1; }
+      .opts-right { flex-shrink: 0; }
+      #canvas-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="top-controls">
+  <header id="main-header">
+    <div class="header-top">
+      <h1 id="site-title">原神・スタレの分布図メーカー</h1>
+      <div class="lang-switch">
+        <label><input type="radio" name="lang" value="ja" checked> 日本語</label>
+        <label><input type="radio" name="lang" value="en"> English</label>
+      </div>
+    </div>
+  </header>
+
+  <!-- Game tabs -->
+  <div class="game-tab-bar">
+    <button class="game-tab-btn active" data-game="genshin"   data-i18n-key="genshinTab">原神</button>
+    <button class="game-tab-btn"        data-game="starrail"  data-i18n-key="starrailTab">崩壊：スターレイル</button>
+    <button class="game-tab-btn"        data-game="sonota"    data-i18n-key="sonotaTab">その他</button>
+  </div>
+
+  <!-- Genshin -->
+  <div id="game-genshin" class="game-section">
+    <div class="elem-tab-bar" id="genshin-elem-tabs">
+      <button class="elem-tab-btn active" data-elem="hi">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/hi.png" alt="">
+        <span data-i18n-key="hi">炎</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="mizu">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/mizu.png" alt="">
+        <span data-i18n-key="mizu">水</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="koori">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/koori.png" alt="">
+        <span data-i18n-key="koori">氷</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kaminari">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/kaminari.png" alt="">
+        <span data-i18n-key="kaminari">雷</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kusa">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/kusa.png" alt="">
+        <span data-i18n-key="kusa">草</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kaze">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/kaze.png" alt="">
+        <span data-i18n-key="kaze">風</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="iwa">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/Genso/iwa.png" alt="">
+        <span data-i18n-key="iwa">岩</span>
+      </button>
+    </div>
+    <div class="char-list" id="char-list-genshin">
+      <span style="color:var(--muted);font-size:.8rem;padding:8px">読み込み中…</span>
+    </div>
+  </div>
+
+  <!-- StarRail -->
+  <div id="game-starrail" class="game-section" style="display:none">
+    <div class="elem-tab-bar" id="starrail-elem-tabs">
+      <button class="elem-tab-btn active" data-elem="hi">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/hi.png" alt="">
+        <span data-i18n-key="hi">炎</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="koori">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/koori.png" alt="">
+        <span data-i18n-key="koori">氷</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kaze">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/kaze.png" alt="">
+        <span data-i18n-key="kaze">風</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kaminari">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/kaminari.png" alt="">
+        <span data-i18n-key="kaminari">雷</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="kyosuu">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/kyosuu.png" alt="">
+        <span data-i18n-key="kyosuu">虚数</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="ryoushi">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/ryoushi.png" alt="">
+        <span data-i18n-key="ryoushi">量子</span>
+      </button>
+      <button class="elem-tab-btn" data-elem="butsuri">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/Genso/butsuri.png" alt="">
+        <span data-i18n-key="butsuri">物理</span>
+      </button>
+    </div>
+    <div class="char-list" id="char-list-starrail">
+      <span style="color:var(--muted);font-size:.8rem;padding:8px">読み込み中…</span>
+    </div>
+  </div>
+
+  <!-- その他 -->
+  <div id="game-sonota" class="game-section" style="display:none">
+    <div class="char-list" id="char-list-sonota">
+      <div class="char-thumb" id="sonota-thumb" data-src="image/sonota.png" data-name="その他">
+        <img src="image/sonota.png" alt="その他" onerror="this.style.opacity='.3'">
+        <span>その他</span>
+      </div>
+      <div class="char-thumb" id="uuko-thumb" data-src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/favicon_io/android-chrome-96x96.png" data-name="うーこ">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/favicon_io/android-chrome-96x96.png" alt="うーこ" onerror="this.style.opacity='.3'">
+        <span>うーこ</span>
+      </div>
+      <div class="upload-thumb" id="upload-thumb">
+        <span class="plus">＋</span>
+        <span data-i18n-key="anyImage">任意</span>
+        <input type="file" id="file-input" accept="image/*" style="display:none">
+      </div>
+    </div>
+  </div>
+
+  <!-- Options bar -->
+  <div class="options-bar">
+    <div class="opts-left">
+      <label for="preset-select" data-i18n-key="presetLabel">ネタを選ぶ：</label>
+      <select id="preset-select"></select>
+    </div>
+    <button id="save-btn" data-i18n-key="saveImage">Save Image</button>
+    <div class="opts-right">
+      <a href="https://x.com/uko_dayo_" target="_blank" rel="noopener" class="sns-link">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/footer_icon/twitter_image.png" alt="Twitter">
+      </a>
+      <a href="https://t.co/0jAcAV2GJv" target="_blank" rel="noopener" class="sns-link">
+        <img src="https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/00_common/footer_icon/discord_image.png" alt="Discord">
+      </a>
+    </div>
+  </div>
+  </div><!-- /#top-controls -->
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <div id="canvas-area">
+      <div id="chart-card">
+        <div id="canvas-hint" data-html2canvas-ignore="true">
+          <div>① キャラを長押し／ドラッグしてエリアに配置</div>
+          <div>② 配置した画像をタップ（右クリック）→ 入力・削除・拡大縮小</div>
+          <div>③ タイトルや軸ラベルは直接クリックして入力できます</div>
+        </div>
+        <div id="chart-title-box" class="chart-field" contenteditable="true" data-placeholder="タイトルを入力…"></div>
+        <div id="chart-top-box" class="chart-field axis-box-h" contenteditable="true" data-placeholder="上の軸ラベル"></div>
+        <div id="chart-left-box" class="chart-field axis-box-v" contenteditable="true" data-placeholder="左の軸ラベル"></div>
+        <div id="quadrant-field">
+          <svg id="crosshair-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 460">
+            <defs>
+              <marker id="cross-arrow" markerWidth="10" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
+                <polygon points="0,0 8,4 0,8" fill="#333333"/>
+              </marker>
+            </defs>
+            <line x1="10" y1="230" x2="590" y2="230" stroke="#333333" stroke-width="2.5"
+                  marker-start="url(#cross-arrow)" marker-end="url(#cross-arrow)"/>
+            <line x1="300" y1="10" x2="300" y2="450" stroke="#333333" stroke-width="2.5"
+                  marker-start="url(#cross-arrow)" marker-end="url(#cross-arrow)"/>
+          </svg>
+        </div>
+        <div id="chart-right-box" class="chart-field axis-box-v" contenteditable="true" data-placeholder="右の軸ラベル"></div>
+        <div id="chart-bottom-box" class="chart-field axis-box-h" contenteditable="true" data-placeholder="下の軸ラベル"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag ghost -->
+  <div id="drag-ghost"><img id="drag-ghost-img" src="" alt=""></div>
+
+  <!-- Popup menu -->
+  <div id="popup-menu">
+    <button class="popup-btn" id="popup-input-btn">✏ 入力</button>
+    <div class="popup-resize-row" id="popup-resize-row">
+      <button class="popup-btn" id="popup-shrink-btn">縮小−</button>
+      <button class="popup-btn" id="popup-enlarge-btn">拡大＋</button>
+    </div>
+    <button class="popup-btn danger" id="popup-delete-btn">🗑 削除</button>
+  </div>
+
+  <!-- Text edit popup -->
+  <div id="text-edit-popup">
+    <div class="text-edit-label" id="text-edit-label">テキストを入力</div>
+    <input type="text" id="text-edit-input" maxlength="60" placeholder="テキスト">
+    <div class="text-edit-actions">
+      <button id="text-edit-cancel">キャンセル</button>
+      <button class="ok" id="text-edit-ok">OK</button>
+    </div>
+  </div>
+
+  <!-- Crop modal -->
+  <div id="crop-modal">
+    <div class="crop-title">切り取り範囲を選択してください（ドラッグ＆ズーム）</div>
+    <div class="crop-frame" id="crop-frame">
+      <img id="crop-img-el" src="" alt="">
+    </div>
+    <div class="crop-zoom-row">
+      <label>ズーム</label>
+      <input type="range" id="crop-zoom" min="0.1" max="5" step="0.05" value="1">
+    </div>
+    <div class="crop-actions">
+      <button id="crop-cancel">キャンセル</button>
+      <button id="crop-ok">決定</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script type="module">
+    import { genshinChars }  from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_data/genshin_chars.js';
+    import { starrailChars } from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_data/starrail_chars.js';
+
+    const GENSHIN_BASE  = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_full/';
+    const STARRAIL_BASE = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_full/';
+
+    // ===== ネタ（プリセット）=====
+    // 中身は後で追加していく想定。key:'custom' は「手入力」の目印で、選んでも既存の入力内容は消さない。
+    const PRESETS = [
+      { key: 'custom', label: { ja: 'カスタム（手入力）', en: 'Custom' } },
+      {
+        key: 'holiday', label: { ja: '休日の過ごし方', en: 'How to spend a day off' },
+        ja: { title: '休日の過ごし方', top: 'ひとりで過ごす', bottom: '仲間と過ごす', left: 'アウトドア派', right: 'インドア派' },
+        en: { title: 'How to spend a day off', top: 'Alone', bottom: 'With friends', left: 'Outdoor', right: 'Indoor' },
+      },
+    ];
+
+    // ===== i18n =====
+    const i18n = {
+      ja: {
+        title:'原神・スタレの分布図メーカー', genshinTab:'原神', starrailTab:'崩壊：スターレイル',
+        sonotaTab:'その他', saveImage:'Save Image', anyImage:'任意', presetLabel:'ネタを選ぶ：',
+        hi:'炎', mizu:'水', koori:'氷', kaminari:'雷', kusa:'草', kaze:'風', iwa:'岩',
+        kyosuu:'虚数', ryoushi:'量子', butsuri:'物理',
+        inputBtn:'✏ 入力', deleteBtn:'🗑 削除', enlargeBtn:'拡大＋', shrinkBtn:'縮小−',
+        textEditLabel:'テキストを入力',
+        titlePh:'タイトルを入力…', topPh:'上の軸ラベル', bottomPh:'下の軸ラベル',
+        leftPh:'左の軸ラベル', rightPh:'右の軸ラベル',
+      },
+      en: {
+        title:'Genshin/StarRail Distribution Chart', genshinTab:'Genshin', starrailTab:'Honkai: Star Rail',
+        sonotaTab:'Other', saveImage:'Save Image', anyImage:'Custom', presetLabel:'Choose a theme:',
+        hi:'Fire', mizu:'Hydro', koori:'Ice', kaminari:'Lightning', kusa:'Dendro', kaze:'Wind', iwa:'Geo',
+        kyosuu:'Imaginary', ryoushi:'Quantum', butsuri:'Physical',
+        inputBtn:'✏ Label', deleteBtn:'🗑 Delete', enlargeBtn:'Enlarge＋', shrinkBtn:'Shrink−',
+        textEditLabel:'Enter text',
+        titlePh:'Enter chart title…', topPh:'Top axis label', bottomPh:'Bottom axis label',
+        leftPh:'Left axis label', rightPh:'Right axis label',
+      },
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'ja';
+
+    const titleBox  = document.getElementById('chart-title-box');
+    const topBox    = document.getElementById('chart-top-box');
+    const bottomBox = document.getElementById('chart-bottom-box');
+    const leftBox   = document.getElementById('chart-left-box');
+    const rightBox  = document.getElementById('chart-right-box');
+
+    function applyLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      const d = i18n[lang] || i18n.ja;
+      document.getElementById('site-title').textContent = d.title;
+      document.querySelectorAll('[data-i18n-key]').forEach(el => {
+        const k = el.dataset.i18nKey;
+        if (d[k] != null) el.textContent = d[k];
+      });
+      document.getElementById('popup-input-btn').textContent  = d.inputBtn;
+      document.getElementById('popup-delete-btn').textContent = d.deleteBtn;
+      document.getElementById('popup-enlarge-btn').textContent = d.enlargeBtn;
+      document.getElementById('popup-shrink-btn').textContent  = d.shrinkBtn;
+      document.getElementById('text-edit-label').textContent  = d.textEditLabel;
+      titleBox.dataset.placeholder  = d.titlePh;
+      topBox.dataset.placeholder    = d.topPh;
+      bottomBox.dataset.placeholder = d.bottomPh;
+      leftBox.dataset.placeholder   = d.leftPh;
+      rightBox.dataset.placeholder  = d.rightPh;
+      renderPresetOptions();
+    }
+
+    document.querySelectorAll('input[name="lang"]').forEach(r => {
+      if (r.value === currentLang) r.checked = true;
+      r.addEventListener('change', e => applyLang(e.target.value));
+    });
+
+    // ===== プリセット選択 =====
+    const presetSelect = document.getElementById('preset-select');
+    function renderPresetOptions() {
+      const cur = presetSelect.value;
+      presetSelect.innerHTML = '';
+      PRESETS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.key;
+        opt.textContent = p.label[currentLang] || p.label.ja;
+        presetSelect.appendChild(opt);
+      });
+      if (cur) presetSelect.value = cur;
+    }
+    presetSelect.addEventListener('change', () => {
+      const preset = PRESETS.find(p => p.key === presetSelect.value);
+      if (!preset || preset.key === 'custom') return;
+      const d = preset[currentLang] || preset.ja;
+      titleBox.textContent  = d.title  || '';
+      topBox.textContent    = d.top    || '';
+      bottomBox.textContent = d.bottom || '';
+      leftBox.textContent   = d.left   || '';
+      rightBox.textContent  = d.right  || '';
+    });
+
+    // Enterで確定（改行禁止）、貼り付けはプレーンテキストのみ
+    [titleBox, topBox, bottomBox, leftBox, rightBox].forEach(el => {
+      el.addEventListener('pointerdown', e => e.stopPropagation());
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+      el.addEventListener('paste', e => {
+        e.preventDefault();
+        const txt = (e.clipboardData || window.clipboardData).getData('text');
+        document.execCommand('insertText', false, txt);
+      });
+    });
+
+    applyLang(currentLang);
+
+    // ===== State =====
+    let placedItems = [];  // { id, src, name, x, y, text, scale }
+    let nextItemId  = 1;
+
+    const DRAG_THRESHOLD = 8;
+    const BASE_IMG       = 72; // px at scale 1.0
+
+    let iState          = 'idle'; // idle | pressing | dragging-item | placing-tab
+    let pressStart      = null;
+    let draggingId      = null;
+    let tabPlacing      = null;
+
+    const quadrantField  = document.getElementById('quadrant-field');
+    const canvasWrap     = document.getElementById('canvas-wrap');
+    const popupMenu           = document.getElementById('popup-menu');
+    const popupInputBtn       = document.getElementById('popup-input-btn');
+    const popupDeleteBtn      = document.getElementById('popup-delete-btn');
+    const textEditPopup  = document.getElementById('text-edit-popup');
+    const textEditInput  = document.getElementById('text-edit-input');
+    const textEditOk     = document.getElementById('text-edit-ok');
+    const textEditCancel = document.getElementById('text-edit-cancel');
+    const dragGhost      = document.getElementById('drag-ghost');
+    const dragGhostImg   = document.getElementById('drag-ghost-img');
+
+    let popupTarget    = null;
+    let textEditTarget = null;
+
+    // ===== Language-agnostic setup =====
+    document.querySelectorAll('.game-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.game-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.game-section').forEach(s => s.style.display = 'none');
+        document.getElementById(`game-${btn.dataset.game}`).style.display = '';
+      });
+    });
+
+    function setupElemTabs(tabBarId, charListId, isGenshin) {
+      document.getElementById(tabBarId).querySelectorAll('.elem-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById(tabBarId).querySelectorAll('.elem-tab-btn')
+            .forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (isGenshin) {
+            renderCharList(charListId, genshinChars.filter(c => c.element === btn.dataset.elem), GENSHIN_BASE, true, btn.dataset.elem);
+          } else {
+            renderCharList(charListId, starrailChars.filter(c => c.element === btn.dataset.elem), STARRAIL_BASE, false, btn.dataset.elem);
+          }
+        });
+      });
+    }
+    setupElemTabs('genshin-elem-tabs',  'char-list-genshin',  true);
+    setupElemTabs('starrail-elem-tabs', 'char-list-starrail', false);
+
+    const REEL_COPIES = 3;
+    const ELEM_COLOR = {
+      hi:       '#e05a2b', mizu:    '#2b6be0', koori:   '#42a5c8',
+      kaminari: '#9b59b6', kusa:    '#3a9b47', kaze:    '#2aaba8',
+      iwa:      '#c8963e', butsuri: '#888888', kyosuu:  '#c8a800',
+      ryoushi:  '#5b4fa0',
+    };
+
+    function renderCharList(listId, chars, baseUrl, hasName, elem) {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      if (!chars.length) { list.innerHTML = '<span style="color:var(--muted);font-size:.8rem;padding:8px">キャラなし</span>'; return; }
+      const divColor = ELEM_COLOR[elem] || 'var(--accent)';
+      for (let c = 0; c < REEL_COPIES; c++) {
+        const div = document.createElement('div');
+        div.className = 'reel-divider';
+        div.style.background = divColor;
+        list.appendChild(div);
+        chars.forEach(ch => {
+          const name = hasName ? (ch.name || ch.icon.replace(/\.\w+$/, '')) : ch.icon.replace(/\.\w+$/, '');
+          list.appendChild(makeCharThumb(`${baseUrl}${ch.icon}`, name));
+        });
+      }
+      requestAnimationFrame(() => {
+        list._reelSingleW = list.scrollWidth / REEL_COPIES;
+        list.scrollLeft   = list._reelSingleW;
+      });
+    }
+
+    function setupReelBehavior(el) {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;';
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+
+      const getStep = () => {
+        const thumb = el.querySelector('.char-thumb');
+        return thumb ? thumb.offsetWidth + 5 : 99;
+      };
+      const mkBtn = (side, label) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `position:absolute;${side}:0;top:50%;transform:translateY(-50%);
+          z-index:20;background:rgba(0,0,0,.42);color:#fff;border:none;
+          width:45px;height:94px;cursor:pointer;font-size:1.2rem;line-height:1;
+          border-radius:${side==='left'?'0 6px 6px 0':'6px 0 0 6px'};
+          pointer-events:all;user-select:none;display:flex;align-items:center;justify-content:center;`;
+        b.addEventListener('click', () => el.scrollBy({ left: side==='left' ? -getStep() : getStep(), behavior:'instant' }));
+        wrap.appendChild(b);
+      };
+      mkBtn('left', '◀');
+      mkBtn('right', '▶');
+
+      el.addEventListener('wheel', e => {
+        e.preventDefault();
+        let delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+        if (e.deltaMode === 1) delta *= 40;
+        if (e.deltaMode === 2) delta *= el.clientWidth;
+        el.scrollLeft += delta;
+      }, { passive: false });
+
+      let reelDragging = false, reelStartX = 0, reelScrollStart = 0;
+      el.addEventListener('pointerdown', e => {
+        if (e.target.closest('.char-thumb') || e.target.closest('.upload-thumb')) return;
+        reelDragging = true; reelStartX = e.clientX; reelScrollStart = el.scrollLeft;
+        el.classList.add('reel-grabbing'); e.preventDefault();
+      });
+      document.addEventListener('pointermove', e => {
+        if (!reelDragging) return;
+        el.scrollLeft = reelScrollStart - (e.clientX - reelStartX);
+      });
+      document.addEventListener('pointerup', () => {
+        reelDragging = false; el.classList.remove('reel-grabbing');
+      });
+
+      el.addEventListener('scroll', () => {
+        const sw = el._reelSingleW;
+        if (!sw) return;
+        if      (el.scrollLeft < sw * 0.3) el.scrollLeft += sw;
+        else if (el.scrollLeft > sw * 1.7) el.scrollLeft -= sw;
+      }, { passive: true });
+    }
+
+    renderCharList('char-list-genshin',  genshinChars.filter(c => c.element === 'hi'),  GENSHIN_BASE,  true,  'hi');
+    renderCharList('char-list-starrail', starrailChars.filter(c => c.element === 'hi'), STARRAIL_BASE, false, 'hi');
+    setupReelBehavior(document.getElementById('char-list-genshin'));
+    setupReelBehavior(document.getElementById('char-list-starrail'));
+    setupReelBehavior(document.getElementById('char-list-sonota'));
+
+    document.querySelectorAll('#char-list-sonota .char-thumb').forEach(thumb => {
+      thumb.addEventListener('pointerdown', e => {
+        if (e.button === 2) return;
+        startTabDrag(e, thumb.dataset.src, thumb.dataset.name, thumb);
+      });
+    });
+
+    // ===== Char thumb =====
+    function makeCharThumb(src, name) {
+      const div = document.createElement('div');
+      div.className = 'char-thumb';
+      div.dataset.src = src; div.dataset.name = name;
+      const img = document.createElement('img');
+      img.src = src; img.alt = name; img.draggable = false;
+      img.onerror = () => { img.style.opacity = '.3'; };
+      div.appendChild(img);
+      div.addEventListener('pointerdown', e => {
+        if (e.button === 2) return;
+        startTabDrag(e, src, name, div);
+      });
+      return div;
+    }
+
+    // ===== Drag from tab =====
+    function startTabDrag(e, src, name, thumbEl) {
+      if (iState !== 'idle') return;
+      e.preventDefault();
+      const sx = e.clientX, sy = e.clientY;
+      let started = false;
+      iState = 'placing-tab'; tabPlacing = { src, name };
+      dragGhostImg.src = src;
+
+      const onMove = ev => {
+        ev.preventDefault();
+        if (!started) {
+          if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
+          started = true;
+          dragGhost.style.display = 'block';
+          thumbEl.classList.add('dragging-active');
+        }
+        moveGhost(ev.clientX, ev.clientY);
+        quadrantField.classList.toggle('drag-over', isOverField(ev.clientX, ev.clientY));
+      };
+      const onUp = ev => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        dragGhost.style.display = 'none';
+        quadrantField.classList.remove('drag-over');
+        thumbEl.classList.remove('dragging-active');
+        if (started && isOverField(ev.clientX, ev.clientY) && tabPlacing) {
+          const r = quadrantField.getBoundingClientRect();
+          const x = ev.clientX - r.left - 40;
+          const y = ev.clientY - r.top  - 40;
+          placeItem(tabPlacing.src, tabPlacing.name, x, y);
+        }
+        iState = 'idle'; tabPlacing = null;
+      };
+      document.addEventListener('pointermove', onMove, { passive: false });
+      document.addEventListener('pointerup', onUp);
+    }
+
+    function moveGhost(cx, cy) { dragGhost.style.left = cx + 'px'; dragGhost.style.top = cy + 'px'; }
+    function isOverField(cx, cy) {
+      const r = quadrantField.getBoundingClientRect();
+      return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+    }
+
+    // ===== Place item =====
+    function iSz(item) { return Math.round(BASE_IMG * (item.scale || 1)); }
+    function dW(item) { return iSz(item) + 8; }
+
+    function clampToField(x, y, w, h) {
+      const maxX = Math.max(0, quadrantField.clientWidth  - w);
+      const maxY = Math.max(0, quadrantField.clientHeight - h);
+      return { x: Math.min(Math.max(0, x), maxX), y: Math.min(Math.max(0, y), maxY) };
+    }
+
+    function placeItem(src, name, x, y) {
+      const id = `item-${nextItemId++}`;
+      const item = { id, src, name, x: 0, y: 0, text: '', scale: 1.0 };
+      const w = dW(item), sz = iSz(item);
+      const c = clampToField(x, y, w, sz + 20);
+      item.x = c.x; item.y = c.y;
+      placedItems.push(item);
+      quadrantField.appendChild(createItemEl(item));
+    }
+
+    function createItemEl(item) {
+      const el = document.createElement('div');
+      el.className = 'placed-item'; el.id = item.id;
+      el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
+
+      const sz = iSz(item), w = dW(item);
+      el.style.width = w + 'px';
+      const img = document.createElement('img');
+      img.src = item.src; img.alt = item.name; img.draggable = false;
+      img.style.width = sz + 'px'; img.style.height = sz + 'px';
+      img.onerror = () => { img.style.opacity = '.3'; };
+      const txt = document.createElement('div');
+      txt.className = 'placed-text'; txt.textContent = item.text; txt.style.maxWidth = w + 'px';
+      el.appendChild(img); el.appendChild(txt);
+
+      el.addEventListener('contextmenu', e => {
+        e.preventDefault(); e.stopPropagation();
+        showItemPopup(item.id, e.clientX, e.clientY);
+      });
+      el.addEventListener('pointerdown', e => {
+        if (e.button === 2) return;
+        e.stopPropagation(); e.preventDefault();
+        onItemDown(e, item.id);
+      });
+      return el;
+    }
+
+    function applyItemSize(itemId) {
+      const item = placedItems.find(i => i.id === itemId);
+      if (!item) return;
+      const el = document.getElementById(itemId); if (!el) return;
+      const sz = iSz(item), w = dW(item);
+      const c = clampToField(item.x, item.y, w, sz + 20);
+      item.x = c.x; item.y = c.y;
+      el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
+      el.style.width = w + 'px';
+      const img = el.querySelector('img');
+      if (img) { img.style.width = sz + 'px'; img.style.height = sz + 'px'; }
+      const txt = el.querySelector('.placed-text');
+      if (txt) txt.style.maxWidth = w + 'px';
+    }
+
+    // ===== Item interaction (press → drag or click → popup) =====
+    function onItemDown(e, itemId) {
+      if (iState !== 'idle') return;
+      closePopup();
+      iState = 'pressing'; pressStart = { x: e.clientX, y: e.clientY, itemId };
+      document.addEventListener('pointermove', onDocMove);
+      document.addEventListener('pointerup',   onDocUp);
+    }
+
+    function onDocMove(e) {
+      if (iState === 'pressing') {
+        if (Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > DRAG_THRESHOLD) {
+          iState = 'dragging-item'; draggingId = pressStart.itemId;
+        }
+      }
+      if (iState === 'dragging-item') {
+        const item = placedItems.find(i => i.id === draggingId);
+        if (item) {
+          const r = quadrantField.getBoundingClientRect();
+          const w = dW(item), sz = iSz(item);
+          const c = clampToField(e.clientX - r.left - w / 2, e.clientY - r.top - sz / 2, w, sz + 20);
+          item.x = c.x; item.y = c.y;
+          const el = document.getElementById(draggingId);
+          if (el) { el.style.left = item.x + 'px'; el.style.top = item.y + 'px'; }
+        }
+      }
+    }
+
+    function onDocUp(e) {
+      document.removeEventListener('pointermove', onDocMove);
+      document.removeEventListener('pointerup',   onDocUp);
+      if (iState === 'pressing') {
+        iState = 'idle';
+        showItemPopup(pressStart.itemId, e.clientX, e.clientY);
+        return;
+      }
+      if (iState === 'dragging-item') { iState = 'idle'; draggingId = null; return; }
+    }
+
+    // ===== Popup =====
+    function showItemPopup(itemId, cx, cy) {
+      popupTarget = { type: 'item', id: itemId };
+      openPopup(cx, cy);
+    }
+    function openPopup(cx, cy) {
+      popupMenu.style.display = 'flex';
+      requestAnimationFrame(() => {
+        const w = popupMenu.offsetWidth || 140, h = popupMenu.offsetHeight || 100;
+        let left = cx + 10, top = cy + 10;
+        if (left + w > window.innerWidth)  left = cx - w - 10;
+        if (top  + h > window.innerHeight) top  = cy - h - 10;
+        popupMenu.style.left = Math.max(4, left) + 'px';
+        popupMenu.style.top  = Math.max(4, top)  + 'px';
+      });
+    }
+    function closePopup() { popupMenu.style.display = 'none'; popupTarget = null; }
+
+    document.addEventListener('click', e => {
+      if (e.target.closest('#popup-menu')) return;
+      if (e.target.closest('.placed-item')) return;
+      closePopup();
+    });
+
+    popupInputBtn.addEventListener('click', () => {
+      if (!popupTarget) return;
+      const t = popupTarget; closePopup(); openTextEdit(t);
+    });
+    popupDeleteBtn.addEventListener('click', () => {
+      if (!popupTarget) return;
+      deleteItem(popupTarget.id);
+      closePopup();
+    });
+    document.getElementById('popup-enlarge-btn').addEventListener('click', () => {
+      if (!popupTarget) return;
+      const item = placedItems.find(i => i.id === popupTarget.id);
+      if (item) { item.scale = Math.min(4.0, (item.scale || 1) * 1.25); applyItemSize(item.id); }
+    });
+    document.getElementById('popup-shrink-btn').addEventListener('click', () => {
+      if (!popupTarget) return;
+      const item = placedItems.find(i => i.id === popupTarget.id);
+      if (item) { item.scale = Math.max(0.3, (item.scale || 1) / 1.25); applyItemSize(item.id); }
+    });
+
+    // ===== Text edit =====
+    function openTextEdit(target) {
+      textEditTarget = target;
+      const cur = placedItems.find(i => i.id === target.id)?.text || '';
+      textEditInput.value = cur;
+      textEditPopup.style.display = 'flex';
+      let left = window.innerWidth/2 - 115, top = window.innerHeight/2 - 50;
+      const el = document.getElementById(target.id);
+      if (el) { const r = el.getBoundingClientRect(); left = r.left; top = r.bottom + 8; }
+      const w = 240, h = 105;
+      if (left + w > window.innerWidth)  left = window.innerWidth  - w - 8;
+      if (top  + h > window.innerHeight) top  = window.innerHeight - h - 8;
+      textEditPopup.style.left = Math.max(4, left) + 'px';
+      textEditPopup.style.top  = Math.max(4, top)  + 'px';
+      requestAnimationFrame(() => { textEditInput.focus(); textEditInput.select(); });
+    }
+    function applyTextEdit() {
+      if (!textEditTarget) return;
+      const item = placedItems.find(i => i.id === textEditTarget.id);
+      if (item) {
+        item.text = textEditInput.value;
+        const td = document.getElementById(textEditTarget.id)?.querySelector('.placed-text');
+        if (td) td.textContent = item.text;
+      }
+      closeTextEdit();
+    }
+    function closeTextEdit() { textEditPopup.style.display = 'none'; textEditTarget = null; }
+    textEditOk.addEventListener('click', applyTextEdit);
+    textEditCancel.addEventListener('click', closeTextEdit);
+    textEditInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyTextEdit(); if (e.key === 'Escape') closeTextEdit(); });
+
+    // ===== Delete =====
+    function deleteItem(itemId) {
+      placedItems = placedItems.filter(i => i.id !== itemId);
+      document.getElementById(itemId)?.remove();
+    }
+
+    // Inject font as base64 at startup so html2canvas clone can use it
+    (async () => {
+      try {
+        const resp = await fetch('font/mihoyo-zenzero.ttf');
+        const buf  = await resp.arrayBuffer();
+        const u8   = new Uint8Array(buf);
+        let bin = '', chunk = 8192;
+        for (let i = 0; i < u8.length; i += chunk)
+          bin += String.fromCharCode(...u8.subarray(i, Math.min(i + chunk, u8.length)));
+        const dataUrl = `data:font/truetype;base64,${btoa(bin)}`;
+        const s = document.createElement('style');
+        s.id = 'font-b64-inject';
+        s.textContent = `@font-face{font-family:'MihoyoZenZero';src:url('${dataUrl}')format('truetype');}`;
+        document.head.appendChild(s);
+      } catch(e) {}
+    })();
+
+    // ===== Save image =====
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      closePopup(); closeTextEdit();
+      document.activeElement?.blur();
+      const chartCard = document.getElementById('chart-card');
+      await document.fonts.ready;
+      try {
+        const dpr = Math.max(window.devicePixelRatio || 1, 2);
+        const fontStyleText = document.getElementById('font-b64-inject')?.textContent || '';
+        const cvs = await html2canvas(chartCard, {
+          useCORS: true, allowTaint: true, backgroundColor: '#ffffff', scale: dpr,
+          onclone: doc => {
+            if (fontStyleText) {
+              const s = doc.createElement('style');
+              s.textContent = fontStyleText;
+              doc.head.appendChild(s);
+            }
+          },
+        });
+        const now = new Date(), padN = n => String(n).padStart(2, '0');
+        const ts = `${now.getFullYear()}${padN(now.getMonth()+1)}${padN(now.getDate())}_`
+                 + `${padN(now.getHours())}${padN(now.getMinutes())}${padN(now.getSeconds())}`;
+        const a = document.createElement('a');
+        a.download = `分布図_${ts}.png`; a.href = cvs.toDataURL('image/png'); a.click();
+      } catch (err) { alert('保存に失敗しました: ' + err.message); }
+    });
+
+    // ===== Upload with crop modal =====
+    document.getElementById('upload-thumb').addEventListener('click', () => document.getElementById('file-input').click());
+
+    let cropNativeImg = null, cropScale = 1, cropOX = 0, cropOY = 0;
+    let cropPendingName = '';
+    const cropModal  = document.getElementById('crop-modal');
+    const cropFrame  = document.getElementById('crop-frame');
+    const cropImgEl  = document.getElementById('crop-img-el');
+    const cropZoom   = document.getElementById('crop-zoom');
+    const CROP_SIZE  = 280;
+
+    function openCropModal(dataUrl, fileName) {
+      cropPendingName = fileName;
+      cropNativeImg = new Image();
+      cropNativeImg.onload = () => {
+        cropScale = CROP_SIZE / Math.min(cropNativeImg.width, cropNativeImg.height);
+        cropOX = (CROP_SIZE - cropNativeImg.width  * cropScale) / 2;
+        cropOY = (CROP_SIZE - cropNativeImg.height * cropScale) / 2;
+        cropZoom.min   = (CROP_SIZE / Math.max(cropNativeImg.width, cropNativeImg.height)).toFixed(3);
+        cropZoom.max   = 10;
+        cropZoom.value = cropScale;
+        applyCropTransform();
+        cropModal.classList.add('open');
+      };
+      cropNativeImg.src = dataUrl;
+    }
+
+    function applyCropTransform() {
+      cropImgEl.src    = cropNativeImg.src;
+      cropImgEl.style.width  = (cropNativeImg.width  * cropScale) + 'px';
+      cropImgEl.style.height = (cropNativeImg.height * cropScale) + 'px';
+      cropImgEl.style.left   = cropOX + 'px';
+      cropImgEl.style.top    = cropOY + 'px';
+    }
+
+    let cropDragging = false, cropDragStart = null;
+    cropFrame.addEventListener('pointerdown', e => {
+      cropDragging = true;
+      cropDragStart = { x: e.clientX - cropOX, y: e.clientY - cropOY };
+      cropFrame.setPointerCapture(e.pointerId);
+    });
+    cropFrame.addEventListener('pointermove', e => {
+      if (!cropDragging) return;
+      cropOX = e.clientX - cropDragStart.x;
+      cropOY = e.clientY - cropDragStart.y;
+      applyCropTransform();
+    });
+    cropFrame.addEventListener('pointerup', () => cropDragging = false);
+
+    cropFrame.addEventListener('wheel', e => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.92 : 1.09;
+      const newScale = Math.max(+cropZoom.min, Math.min(10, cropScale * factor));
+      const cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
+      cropOX = cx - (cx - cropOX) * (newScale / cropScale);
+      cropOY = cy - (cy - cropOY) * (newScale / cropScale);
+      cropScale = newScale;
+      cropZoom.value = cropScale;
+      applyCropTransform();
+    }, { passive: false });
+
+    cropZoom.addEventListener('input', () => {
+      const newScale = +cropZoom.value;
+      const cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
+      cropOX = cx - (cx - cropOX) * (newScale / cropScale);
+      cropOY = cy - (cy - cropOY) * (newScale / cropScale);
+      cropScale = newScale;
+      applyCropTransform();
+    });
+
+    document.getElementById('crop-ok').addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      const srcX    = -cropOX / cropScale;
+      const srcY    = -cropOY / cropScale;
+      const srcSize = CROP_SIZE / cropScale;
+      ctx.drawImage(cropNativeImg, srcX, srcY, srcSize, srcSize, 0, 0, 200, 200);
+      const url = canvas.toDataURL('image/png');
+      const sonotaList = document.getElementById('char-list-sonota');
+      const newThumb = makeCharThumb(url, cropPendingName);
+      const thumbSpan = newThumb.querySelector('span'); if (thumbSpan) thumbSpan.style.display = 'none';
+      sonotaList.insertBefore(newThumb, document.getElementById('upload-thumb'));
+      cropModal.classList.remove('open');
+    });
+
+    document.getElementById('crop-cancel').addEventListener('click', () => cropModal.classList.remove('open'));
+
+    document.getElementById('file-input').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      e.target.value = '';
+      const reader = new FileReader();
+      reader.onload = ev => openCropModal(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
+      reader.readAsDataURL(file);
+    });
+
+  </script>
+
+  <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
+</body>
+</html>
