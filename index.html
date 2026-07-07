@@ -152,8 +152,8 @@
     #chart-card {
       position: relative;
       display: grid;
-      grid-template-columns: 46px 600px 46px;
-      grid-template-rows: auto auto 460px auto;
+      grid-template-columns: 69px 1350px 69px;
+      grid-template-rows: auto auto 1350px auto;
       gap: 10px;
       background: var(--surface);
       padding: 16px;
@@ -170,15 +170,30 @@
     #chart-title-box {
       display: block; width: 100%;
       background: #f8dfc7; border: 1.5px solid #e0b487; border-radius: 10px;
-      padding: 10px 20px; font-size: 1.2rem; font-weight: bold; text-align: center;
+      padding: 10px 46px 10px 20px; font-size: 1.2rem; font-weight: bold; text-align: center;
       min-height: 1.5em;
     }
     #chart-title-box::placeholder { color: var(--muted); font-weight: bold; }
     #chart-title-box:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
+    /* Always-visible dropdown affordance for the title's <input list>; purely
+       decorative (pointer-events:none, clicks pass through to the input) and
+       excluded from the exported image via data-html2canvas-ignore. Also
+       hidden when printing (browser print, not the PNG export above). */
+    #title-list-hint {
+      position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+      pointer-events: none; font-size: 1.4rem; font-weight: 900; color: #8a4a1f;
+      line-height: 1;
+    }
+    @media print {
+      #title-list-hint { display: none !important; }
+    }
+    /* Chromium shows its own hover-only dropdown indicator for <input list>;
+       hide it so only our always-visible ▼ is shown. */
+    #chart-title-box::-webkit-calendar-picker-indicator { display: none !important; }
     .axis-box-h {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 22px; font-size: .95rem; font-weight: bold; text-align: center;
-      min-height: 1.4em; min-width: 200px; max-width: 560px;
+      min-height: 1.4em; min-width: 300px; max-width: 1290px;
       grid-column: 2; justify-self: center;
     }
     .axis-box-h:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
@@ -186,7 +201,7 @@
     #chart-bottom-box { grid-row: 4; }
     .axis-box-v {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      grid-row: 3; width: 46px;
+      grid-row: 3; width: 69px;
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
       font-size: .82rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
@@ -199,11 +214,11 @@
     /* ===== Quadrant field (drop zone) ===== */
     #quadrant-field {
       grid-column: 2; grid-row: 3;
-      position: relative; width: 600px; height: 460px;
+      position: relative; width: 1350px; height: 1350px;
       background: var(--surface); overflow: visible;
     }
     #quadrant-field.drag-over { box-shadow: inset 0 0 0 3px rgba(255,204,0,.4); }
-    #crosshair-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    #crosshair-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
 
     /* ===== Placed items ===== */
     .placed-item {
@@ -461,19 +476,20 @@
           <input id="chart-title-box" class="chart-field" type="text" list="preset-datalist"
                  placeholder="タイトルを入力…" autocomplete="off">
           <datalist id="preset-datalist" data-html2canvas-ignore="true"></datalist>
+          <span id="title-list-hint" data-html2canvas-ignore="true">▼</span>
         </div>
         <div id="chart-top-box" class="chart-field axis-box-h" contenteditable="true" data-placeholder="上の軸ラベル"></div>
         <div id="chart-left-box" class="chart-field axis-box-v" contenteditable="true" data-placeholder="左の軸ラベル"></div>
         <div id="quadrant-field">
-          <svg id="crosshair-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 460">
+          <svg id="crosshair-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
             <defs>
               <marker id="cross-arrow" markerWidth="10" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse">
                 <polygon points="0,0 8,4 0,8" fill="#333333"/>
               </marker>
             </defs>
-            <line x1="10" y1="230" x2="590" y2="230" stroke="#333333" stroke-width="2.5"
+            <line x1="0" y1="450" x2="900" y2="450" stroke="#333333" stroke-width="2.5"
                   marker-start="url(#cross-arrow)" marker-end="url(#cross-arrow)"/>
-            <line x1="300" y1="10" x2="300" y2="450" stroke="#333333" stroke-width="2.5"
+            <line x1="450" y1="0" x2="450" y2="900" stroke="#333333" stroke-width="2.5"
                   marker-start="url(#cross-arrow)" marker-end="url(#cross-arrow)"/>
           </svg>
         </div>
