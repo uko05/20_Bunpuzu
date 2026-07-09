@@ -316,14 +316,6 @@
     }
     .text-edit-actions button.ok { background: var(--accent); border-color: var(--accent); font-weight: bold; }
 
-    /* ===== Canvas hint ===== */
-    #canvas-hint {
-      position: absolute; top: -8px; left: -8px; transform: translateY(-100%);
-      color: var(--muted); font-size: .78rem; text-align: left;
-      line-height: 1.9; pointer-events: none; user-select: none; white-space: nowrap;
-      opacity: .55;
-    }
-
     /* ===== Version tag (dev-facing; confirms latest changes are loaded) ===== */
     #version-tag {
       position: fixed; right: 8px; bottom: 6px; z-index: 999;
@@ -346,7 +338,6 @@
       .opts-left { flex: 1 1 100%; justify-content: center; }
       #save-btn { flex: 1; }
       .opts-right { flex-shrink: 0; }
-      #canvas-hint { display: none; }
       .area-size-switch { display: none; }
     }
   </style>
@@ -490,10 +481,6 @@
   <div id="canvas-wrap">
     <div id="canvas-area">
       <div id="chart-card">
-        <div id="canvas-hint" data-html2canvas-ignore="true">
-          <div>① キャラを長押し／ドラッグしてエリアに配置</div>
-          <div>② 配置した画像をタップ（右クリック）→ 入力・削除・拡大縮小</div>
-        </div>
         <div id="chart-title-wrap">
           <input id="chart-title-box" class="chart-field" type="text" list="preset-datalist"
                  placeholder="タイトルを入力…" autocomplete="off">
@@ -1293,6 +1280,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v8</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v9</div>
 </body>
 </html>
