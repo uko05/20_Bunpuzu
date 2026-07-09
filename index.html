@@ -323,6 +323,13 @@
       opacity: .55;
     }
 
+    /* ===== Version tag (dev-facing; confirms latest changes are loaded) ===== */
+    #version-tag {
+      position: fixed; right: 8px; bottom: 6px; z-index: 999;
+      color: var(--muted); font-size: .68rem; opacity: .35;
+      pointer-events: none; user-select: none;
+    }
+
     /* ===== Mobile ===== */
     @media (max-width: 768px) {
       body { height: 100dvh; overflow: hidden; }
@@ -1225,5 +1232,7 @@
   </script>
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
+
+  <div id="version-tag" data-html2canvas-ignore="true">v1</div>
 </body>
 </html>
