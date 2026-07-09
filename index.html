@@ -151,15 +151,15 @@
     }
 
     /* ===== Chart card (distribution chart content) ===== */
-    /* Area size presets (PC only; mobile always uses "large"). --qsize drives
+    /* Area size presets (PC only; default is "medium"). --qsize drives
        the quadrant field and everything proportional to it via calc(). */
-    :root, [data-area-size="large"]  { --qsize: 1350px; }
-    [data-area-size="medium"] { --qsize: 1125px; }
-    [data-area-size="small"]  { --qsize: 900px; }
+    [data-area-size="large"]  { --qsize: 1125px; }
+    :root, [data-area-size="medium"] { --qsize: 900px; }
+    [data-area-size="small"]  { --qsize: 675px; }
     #chart-card {
       position: relative;
       display: grid;
-      grid-template-columns: calc(var(--qsize) * 46 / 900) var(--qsize) calc(var(--qsize) * 46 / 900);
+      grid-template-columns: calc(var(--qsize) * 72 / 900) var(--qsize) calc(var(--qsize) * 72 / 900);
       grid-template-rows: auto auto var(--qsize) auto;
       gap: 10px;
       background: var(--surface);
@@ -208,7 +208,7 @@
     #chart-bottom-box { grid-row: 4; }
     .axis-box-v {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      grid-row: 3; width: calc(var(--qsize) * 46 / 900);
+      grid-row: 3; width: calc(var(--qsize) * 72 / 900);
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
       font-size: .82rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
@@ -462,8 +462,8 @@
       <div class="area-size-switch" id="area-size-switch">
         <span class="area-size-label" data-i18n-key="areaSizeLabel">エリアサイズ</span>
         <label><input type="radio" name="area-size" value="small"> <span data-i18n-key="areaSizeSmall">小</span></label>
-        <label><input type="radio" name="area-size" value="medium"> <span data-i18n-key="areaSizeMedium">中</span></label>
-        <label><input type="radio" name="area-size" value="large" checked> <span data-i18n-key="areaSizeLarge">大</span></label>
+        <label><input type="radio" name="area-size" value="medium" checked> <span data-i18n-key="areaSizeMedium">中</span></label>
+        <label><input type="radio" name="area-size" value="large"> <span data-i18n-key="areaSizeLarge">大</span></label>
       </div>
     </div>
     <button id="save-btn" data-i18n-key="saveImage">Save Image</button>
@@ -633,12 +633,12 @@
       r.addEventListener('change', e => applyLang(e.target.value));
     });
 
-    // ===== エリアサイズ（PC限定。スマホは常に「大」）=====
+    // ===== エリアサイズ（PC限定。デフォルトは「中」）=====
     function applyAreaSize(size) {
       document.body.dataset.areaSize = size;
       localStorage.setItem('areaSize', size);
     }
-    const savedAreaSize = localStorage.getItem('areaSize') || 'large';
+    const savedAreaSize = localStorage.getItem('areaSize') || 'medium';
     applyAreaSize(savedAreaSize);
     document.querySelectorAll('input[name="area-size"]').forEach(r => {
       if (r.value === savedAreaSize) r.checked = true;
