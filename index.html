@@ -134,6 +134,8 @@
     .opts-right .sns-link img { width: 28px; height: 28px; border-radius: 6px; display: block; transition: opacity .15s; }
     .opts-right .sns-link:hover img { opacity: .75; }
     .options-bar label { display: flex; align-items: center; gap: 4px; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+    .area-size-switch { display: flex; align-items: center; gap: 8px; }
+    .area-size-label { font-size: .8rem; color: var(--muted); white-space: nowrap; }
     #save-btn {
       background: var(--accent); border: none; border-radius: 6px;
       padding: 6px 14px; font-family: var(--font); font-size: .85rem; font-weight: bold;
@@ -149,11 +151,16 @@
     }
 
     /* ===== Chart card (distribution chart content) ===== */
+    /* Area size presets (PC only; mobile always uses "large"). --qsize drives
+       the quadrant field and everything proportional to it via calc(). */
+    :root, [data-area-size="large"]  { --qsize: 1350px; }
+    [data-area-size="medium"] { --qsize: 1125px; }
+    [data-area-size="small"]  { --qsize: 900px; }
     #chart-card {
       position: relative;
       display: grid;
-      grid-template-columns: 69px 1350px 69px;
-      grid-template-rows: auto auto 1350px auto;
+      grid-template-columns: calc(var(--qsize) * 46 / 900) var(--qsize) calc(var(--qsize) * 46 / 900);
+      grid-template-rows: auto auto var(--qsize) auto;
       gap: 10px;
       background: var(--surface);
       padding: 16px;
@@ -193,7 +200,7 @@
     .axis-box-h {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
       padding: 6px 22px; font-size: .95rem; font-weight: bold; text-align: center;
-      min-height: 1.4em; min-width: 300px; max-width: 1290px;
+      min-height: 1.4em; min-width: calc(var(--qsize) * 200 / 900); max-width: calc(var(--qsize) * 860 / 900);
       grid-column: 2; justify-self: center;
     }
     .axis-box-h:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
@@ -201,7 +208,7 @@
     #chart-bottom-box { grid-row: 4; }
     .axis-box-v {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      grid-row: 3; width: 69px;
+      grid-row: 3; width: calc(var(--qsize) * 46 / 900);
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
       font-size: .82rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
@@ -214,7 +221,7 @@
     /* ===== Quadrant field (drop zone) ===== */
     #quadrant-field {
       grid-column: 2; grid-row: 3;
-      position: relative; width: 1350px; height: 1350px;
+      position: relative; width: var(--qsize); height: var(--qsize);
       background: var(--surface); overflow: visible;
     }
     #quadrant-field.drag-over { box-shadow: inset 0 0 0 3px rgba(255,204,0,.4); }
@@ -332,6 +339,7 @@
       #save-btn { flex: 1; }
       .opts-right { flex-shrink: 0; }
       #canvas-hint { display: none; }
+      .area-size-switch { display: none; }
     }
   </style>
 </head>
@@ -450,7 +458,14 @@
 
   <!-- Options bar -->
   <div class="options-bar">
-    <div class="opts-left"></div>
+    <div class="opts-left">
+      <div class="area-size-switch" id="area-size-switch">
+        <span class="area-size-label" data-i18n-key="areaSizeLabel">エリアサイズ</span>
+        <label><input type="radio" name="area-size" value="small"> <span data-i18n-key="areaSizeSmall">小</span></label>
+        <label><input type="radio" name="area-size" value="medium"> <span data-i18n-key="areaSizeMedium">中</span></label>
+        <label><input type="radio" name="area-size" value="large" checked> <span data-i18n-key="areaSizeLarge">大</span></label>
+      </div>
+    </div>
     <button id="save-btn" data-i18n-key="saveImage">Save Image</button>
     <div class="opts-right">
       <a href="https://x.com/uko_dayo_" target="_blank" rel="noopener" class="sns-link">
@@ -568,6 +583,7 @@
         textEditLabel:'テキストを入力',
         titlePh:'タイトルを入力…', topPh:'上の軸ラベル', bottomPh:'下の軸ラベル',
         leftPh:'左の軸ラベル', rightPh:'右の軸ラベル',
+        areaSizeLabel:'エリアサイズ', areaSizeSmall:'小', areaSizeMedium:'中', areaSizeLarge:'大',
       },
       en: {
         title:'Genshin/StarRail Distribution Chart', genshinTab:'Genshin', starrailTab:'Honkai: Star Rail',
@@ -578,6 +594,7 @@
         textEditLabel:'Enter text',
         titlePh:'Enter chart title…', topPh:'Top axis label', bottomPh:'Bottom axis label',
         leftPh:'Left axis label', rightPh:'Right axis label',
+        areaSizeLabel:'Area size', areaSizeSmall:'Small', areaSizeMedium:'Medium', areaSizeLarge:'Large',
       },
     };
 
@@ -614,6 +631,18 @@
     document.querySelectorAll('input[name="lang"]').forEach(r => {
       if (r.value === currentLang) r.checked = true;
       r.addEventListener('change', e => applyLang(e.target.value));
+    });
+
+    // ===== エリアサイズ（PC限定。スマホは常に「大」）=====
+    function applyAreaSize(size) {
+      document.body.dataset.areaSize = size;
+      localStorage.setItem('areaSize', size);
+    }
+    const savedAreaSize = localStorage.getItem('areaSize') || 'large';
+    applyAreaSize(savedAreaSize);
+    document.querySelectorAll('input[name="area-size"]').forEach(r => {
+      if (r.value === savedAreaSize) r.checked = true;
+      r.addEventListener('change', e => applyAreaSize(e.target.value));
     });
 
     // ===== プリセット（ネタ）=====
