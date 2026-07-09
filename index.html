@@ -159,7 +159,7 @@
     #chart-card {
       position: relative;
       display: grid;
-      grid-template-columns: calc(var(--qsize) * 72 / 900) var(--qsize) calc(var(--qsize) * 72 / 900);
+      grid-template-columns: calc(var(--qsize) * 56 / 900) var(--qsize) calc(var(--qsize) * 56 / 900);
       grid-template-rows: auto auto var(--qsize) auto;
       gap: 10px;
       background: var(--surface);
@@ -208,10 +208,10 @@
     #chart-bottom-box { grid-row: 4; }
     .axis-box-v {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      grid-row: 3; width: calc(var(--qsize) * 72 / 900);
+      grid-row: 3; width: calc(var(--qsize) * 56 / 900);
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
-      font-size: 1.15rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
+      font-size: 1.35rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
       padding: 10px 6px;
     }
     .axis-box-v:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
@@ -1233,6 +1233,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v5</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v6</div>
 </body>
 </html>
