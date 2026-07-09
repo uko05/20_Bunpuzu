@@ -199,9 +199,9 @@
     #chart-title-box::-webkit-calendar-picker-indicator { display: none !important; }
     .axis-box-h {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      padding: 6px 22px; font-size: .95rem; font-weight: bold; text-align: center;
-      min-height: 1.4em; min-width: calc(var(--qsize) * 200 / 900); max-width: calc(var(--qsize) * 860 / 900);
-      grid-column: 2; justify-self: center;
+      padding: 6px 22px; font-size: 1.35rem; font-weight: bold; text-align: center;
+      min-height: 1.4em; max-width: calc(var(--qsize) * 860 / 900);
+      grid-column: 2; justify-self: stretch;
     }
     .axis-box-h:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
     #chart-top-box { grid-row: 2; }
@@ -211,8 +211,8 @@
       grid-row: 3; width: calc(var(--qsize) * 72 / 900);
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
-      font-size: .82rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
-      padding: 10px 4px;
+      font-size: 1.15rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
+      padding: 10px 6px;
     }
     .axis-box-v:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
     #chart-left-box  { grid-column: 1; }
@@ -1232,6 +1232,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v3</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v4</div>
 </body>
 </html>
