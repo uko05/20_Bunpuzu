@@ -339,6 +339,13 @@
       #save-btn { flex: 1; }
       .opts-right { flex-shrink: 0; }
       .area-size-switch { display: none; }
+      /* Shrink the chart card (title box, axis boxes, quadrant field) to fit
+         the viewport width so nothing needs horizontal scrolling on a phone
+         in portrait. 84px = #canvas-wrap padding (32) + #chart-card padding
+         (32) + its 2 column gaps (20); 1012/900 = chart-card width / --qsize. */
+      body[data-area-size] {
+        --qsize: min(900px, calc((100vw - 84px) * 900 / 1012));
+      }
     }
   </style>
 </head>
@@ -1280,6 +1287,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v9</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v10</div>
 </body>
 </html>
