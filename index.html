@@ -504,7 +504,7 @@
       <div class="img-size-switch" id="img-size-switch">
         <span class="area-size-label" data-i18n-key="imgSizeLabel">画像サイズ</span>
         <span class="img-size-endpoint" data-i18n-key="areaSizeSmall">小</span>
-        <input type="range" id="img-size-slider" min="1.0" max="1.6" step="0.01" value="1.3">
+        <input type="range" id="img-size-slider" min="0" max="1" step="0.001" value="0.5">
         <span class="img-size-endpoint" data-i18n-key="areaSizeLarge">大</span>
       </div>
     </div>
@@ -1010,14 +1010,20 @@
     // Mobile's quadrant field auto-shrinks to fit the viewport width, so a
     // fixed BASE_IMG (tuned for PC's 900px field) would look oversized there.
     // On mobile, scale the base size off the field's actual current width
-    // instead; 0.08 = BASE_IMG(72) / PC medium qsize(900), i.e. a 1x slider
+    // instead; 0.08 = BASE_IMG(72) / PC medium qsize(900), i.e. a 1.3x slider
     // reproduces the same visual proportion as PC's default placement size.
-    const MOBILE_IMG_RATIO = 0.08;
+    const MOBILE_IMG_RATIO  = 0.08;
+    // Never place a character bigger than its reel thumbnail (.char-thumb
+    // img is 63px on mobile — keep this in sync with that rule).
+    const MOBILE_IMG_MAX_PX = 63;
+    // Slider anchor points (see imgSizeRawToMult below): min/mid/max
+    // multiplier reached at raw slider position 0 / 0.5 / 1.
+    const IMG_SIZE_MIN = 1.0, IMG_SIZE_MID = 1.3, IMG_SIZE_MAX = 4.0;
     const MOBILE_MQ = window.matchMedia('(max-width: 768px)');
     function getBaseImgSize() {
       if (!MOBILE_MQ.matches) return BASE_IMG;
-      const mult = parseFloat(document.body.dataset.imgSize) || 1;
-      return (quadrantField.clientWidth || 900) * MOBILE_IMG_RATIO * mult;
+      const mult = parseFloat(document.body.dataset.imgSize) || IMG_SIZE_MID;
+      return Math.min((quadrantField.clientWidth || 900) * MOBILE_IMG_RATIO * mult, MOBILE_IMG_MAX_PX);
     }
     function iSz(item) { return Math.round(getBaseImgSize() * (item.scale || 1)); }
     function dW(item) { return iSz(item) + 8; }
@@ -1088,16 +1094,28 @@
     }
 
     // ===== 画像サイズ（スマホ限定。エリアサイズと違い、配置キャラ画像の基準サイズを変える）=====
+    // The slider itself is a plain linear 0..1 input, but it's mapped to the
+    // multiplier through two exponential (equal-ratio) segments so raw 0.5
+    // always lands exactly on IMG_SIZE_MID (1.3x) regardless of how far out
+    // IMG_SIZE_MAX is pushed to reach the reel-thumbnail size cap above.
+    function imgSizeRawToMult(r) {
+      if (r <= 0.5) return IMG_SIZE_MIN * Math.pow(IMG_SIZE_MID / IMG_SIZE_MIN, r / 0.5);
+      return IMG_SIZE_MID * Math.pow(IMG_SIZE_MAX / IMG_SIZE_MID, (r - 0.5) / 0.5);
+    }
+    function imgSizeMultToRaw(m) {
+      if (m <= IMG_SIZE_MID) return 0.5 * (Math.log(m / IMG_SIZE_MIN) / Math.log(IMG_SIZE_MID / IMG_SIZE_MIN));
+      return 0.5 + 0.5 * (Math.log(m / IMG_SIZE_MID) / Math.log(IMG_SIZE_MAX / IMG_SIZE_MID));
+    }
     function applyImgSize(mult) {
       document.body.dataset.imgSize = mult;
       localStorage.setItem('imgSize', mult);
       placedItems.forEach(item => applyItemSize(item.id));
     }
-    const savedImgSize = parseFloat(localStorage.getItem('imgSize')) || 1.3;
+    const savedImgSize = parseFloat(localStorage.getItem('imgSize')) || IMG_SIZE_MID;
     applyImgSize(savedImgSize);
     const imgSizeSlider = document.getElementById('img-size-slider');
-    imgSizeSlider.value = savedImgSize;
-    imgSizeSlider.addEventListener('input', e => applyImgSize(parseFloat(e.target.value)));
+    imgSizeSlider.value = imgSizeMultToRaw(savedImgSize);
+    imgSizeSlider.addEventListener('input', e => applyImgSize(imgSizeRawToMult(parseFloat(e.target.value))));
 
     // ===== Item interaction (press → drag or click → popup) =====
     function onItemDown(e, itemId) {
@@ -1363,6 +1381,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v16</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v17</div>
 </body>
 </html>
