@@ -197,6 +197,9 @@
     }
     @media print {
       #title-list-hint { display: none !important; }
+      /* The ▼ hint is hidden above, but its reserved right-side padding
+         would still be there, pushing the centered text left. Even it out. */
+      #chart-title-box { padding-left: 20px; padding-right: 20px; }
     }
     /* Chromium shows its own hover-only dropdown indicator for <input list>;
        hide it so only our always-visible ▼ is shown. */
@@ -338,10 +341,12 @@
       #canvas-wrap { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
       .header-top { padding: 6px 10px; }
       .header-top h1 { font-size: .72rem; }
-      .options-bar { flex-wrap: wrap; padding: 5px 8px; gap: 6px; }
-      .opts-left { flex: 1 1 100%; justify-content: center; }
-      #save-btn { flex: 1; }
-      .opts-right { flex-shrink: 0; }
+      /* Column layout so each row (controls / save button / sns links) is
+         independently centered, regardless of how wide its neighbors are
+         (a shared row with flex:1 made the button hug the left, since the
+         sns icons ate space on the right without a matching gap on the left). */
+      .options-bar { flex-direction: column; align-items: center; padding: 5px 8px; gap: 6px; }
+      .opts-left, #save-btn, .opts-right { flex: 0 0 auto; }
       .area-size-switch { display: none; }
       .img-size-switch { display: flex; }
       /* Shrink the chart card (title box, axis boxes, quadrant field) to fit
@@ -349,8 +354,15 @@
          in portrait. 156px = #canvas-wrap padding (32) + #chart-card padding
          (32) + its 2 column gaps (20) + the 2 fixed 36px side columns (72). */
       body[data-area-size] {
-        --qsize: min(900px, calc(100vw - 156px));
+        --qsize: min(900px, calc(100vw - 144px));
       }
+      /* Shrink the title/axis-label text a bit, and shrink the label boxes'
+         short axis (top/bottom's height, left/right's width) to match. */
+      #chart-title-box { font-size: calc(1.2rem - 3px); }
+      .axis-box-h, .axis-box-v { font-size: calc(1.35rem - 3px); }
+      .axis-box-h { padding-top: 1px; padding-bottom: 1px; }
+      .axis-box-v { width: 30px; }
+      #chart-card { grid-template-columns: 30px var(--qsize) 30px; }
     }
   </style>
 </head>
@@ -958,8 +970,12 @@
         thumbEl.classList.remove('dragging-active');
         if (started && isOverField(ev.clientX, ev.clientY) && tabPlacing) {
           const r = quadrantField.getBoundingClientRect();
-          const x = ev.clientX - r.left - 40;
-          const y = ev.clientY - r.top  - 40;
+          // Center the new item on the release point using its actual size
+          // (was a hardcoded 40, tuned for PC's fixed 72px avatars — on
+          // mobile the avatar is much smaller, so it under-centered badly).
+          const tmp = { scale: 1 };
+          const x = ev.clientX - r.left - dW(tmp) / 2;
+          const y = ev.clientY - r.top  - (iSz(tmp) + 20) / 2;
           placeItem(tabPlacing.src, tabPlacing.name, x, y);
         }
         iState = 'idle'; tabPlacing = null;
@@ -1325,6 +1341,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v13</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v14</div>
 </body>
 </html>
