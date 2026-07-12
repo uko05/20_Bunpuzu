@@ -136,6 +136,10 @@
     .options-bar label { display: flex; align-items: center; gap: 4px; font-size: .82rem; cursor: pointer; white-space: nowrap; }
     .area-size-switch { display: flex; align-items: center; gap: 8px; }
     .area-size-label { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+    /* Mobile-only counterpart to .area-size-switch: same look, but changes
+       the placed character image's base size instead of the field size
+       (the field is already auto-fit to the viewport on mobile). */
+    .img-size-switch { display: none; align-items: center; gap: 8px; }
     #save-btn {
       background: var(--accent); border: none; border-radius: 6px;
       padding: 6px 14px; font-family: var(--font); font-size: .85rem; font-weight: bold;
@@ -339,6 +343,7 @@
       #save-btn { flex: 1; }
       .opts-right { flex-shrink: 0; }
       .area-size-switch { display: none; }
+      .img-size-switch { display: flex; }
       /* Shrink the chart card (title box, axis boxes, quadrant field) to fit
          the viewport width so nothing needs horizontal scrolling on a phone
          in portrait. 84px = #canvas-wrap padding (32) + #chart-card padding
@@ -470,6 +475,12 @@
         <label><input type="radio" name="area-size" value="small"> <span data-i18n-key="areaSizeSmall">小</span></label>
         <label><input type="radio" name="area-size" value="medium" checked> <span data-i18n-key="areaSizeMedium">中</span></label>
         <label><input type="radio" name="area-size" value="large"> <span data-i18n-key="areaSizeLarge">大</span></label>
+      </div>
+      <div class="img-size-switch" id="img-size-switch">
+        <span class="area-size-label" data-i18n-key="imgSizeLabel">画像サイズ</span>
+        <label><input type="radio" name="img-size" value="small"> <span data-i18n-key="areaSizeSmall">小</span></label>
+        <label><input type="radio" name="img-size" value="medium" checked> <span data-i18n-key="areaSizeMedium">中</span></label>
+        <label><input type="radio" name="img-size" value="large"> <span data-i18n-key="areaSizeLarge">大</span></label>
       </div>
     </div>
     <button id="save-btn" data-i18n-key="saveImage">Save Image</button>
@@ -645,6 +656,7 @@
         titlePh:'タイトルを入力…', topPh:'上の軸ラベル', bottomPh:'下の軸ラベル',
         leftPh:'左の軸ラベル', rightPh:'右の軸ラベル',
         areaSizeLabel:'エリアサイズ', areaSizeSmall:'小', areaSizeMedium:'中', areaSizeLarge:'大',
+        imgSizeLabel:'画像サイズ',
       },
       en: {
         title:'Genshin/StarRail Distribution Chart', genshinTab:'Genshin', starrailTab:'Honkai: Star Rail',
@@ -656,6 +668,7 @@
         titlePh:'Enter chart title…', topPh:'Top axis label', bottomPh:'Bottom axis label',
         leftPh:'Left axis label', rightPh:'Right axis label',
         areaSizeLabel:'Area size', areaSizeSmall:'Small', areaSizeMedium:'Medium', areaSizeLarge:'Large',
+        imgSizeLabel:'Image size',
       },
     };
 
@@ -962,7 +975,19 @@
     }
 
     // ===== Place item =====
-    function iSz(item) { return Math.round(BASE_IMG * (item.scale || 1)); }
+    // Mobile's quadrant field auto-shrinks to fit the viewport width, so a
+    // fixed BASE_IMG (tuned for PC's 900px field) would look oversized there.
+    // On mobile, scale the base size off the field's actual current width
+    // instead; 0.08 = BASE_IMG(72) / PC medium qsize(900), i.e. "medium"
+    // reproduces the same visual proportion as PC's default placement size.
+    const MOBILE_IMG_RATIO = { small: 0.06, medium: 0.08, large: 0.10 };
+    const MOBILE_MQ = window.matchMedia('(max-width: 768px)');
+    function getBaseImgSize() {
+      if (!MOBILE_MQ.matches) return BASE_IMG;
+      const preset = document.body.dataset.imgSize || 'medium';
+      return (quadrantField.clientWidth || 900) * (MOBILE_IMG_RATIO[preset] || MOBILE_IMG_RATIO.medium);
+    }
+    function iSz(item) { return Math.round(getBaseImgSize() * (item.scale || 1)); }
     function dW(item) { return iSz(item) + 8; }
 
     function clampToField(x, y, w, h) {
@@ -1022,6 +1047,19 @@
       const txt = el.querySelector('.placed-text');
       if (txt) txt.style.maxWidth = w + 'px';
     }
+
+    // ===== 画像サイズ（スマホ限定。エリアサイズと違い、配置キャラ画像の基準サイズを変える）=====
+    function applyImgSize(size) {
+      document.body.dataset.imgSize = size;
+      localStorage.setItem('imgSize', size);
+      placedItems.forEach(item => applyItemSize(item.id));
+    }
+    const savedImgSize = localStorage.getItem('imgSize') || 'medium';
+    applyImgSize(savedImgSize);
+    document.querySelectorAll('input[name="img-size"]').forEach(r => {
+      if (r.value === savedImgSize) r.checked = true;
+      r.addEventListener('change', e => applyImgSize(e.target.value));
+    });
 
     // ===== Item interaction (press → drag or click → popup) =====
     function onItemDown(e, itemId) {
@@ -1287,6 +1325,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v10</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v11</div>
 </body>
 </html>
