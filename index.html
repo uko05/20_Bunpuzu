@@ -146,7 +146,7 @@
        (the field is already auto-fit to the viewport on mobile). */
     .img-size-switch { display: none; align-items: center; gap: 6px; }
     .img-size-endpoint { font-size: .7rem; color: var(--muted); white-space: nowrap; }
-    #img-size-slider { width: 90px; accent-color: var(--accent); }
+    #img-size-slider { width: 180px; accent-color: var(--accent); }
     #save-btn {
       background: var(--accent); border: none; border-radius: 6px;
       padding: 6px 14px; font-family: var(--font); font-size: .85rem; font-weight: bold;
@@ -504,7 +504,7 @@
       <div class="img-size-switch" id="img-size-switch">
         <span class="area-size-label" data-i18n-key="imgSizeLabel">画像サイズ</span>
         <span class="img-size-endpoint" data-i18n-key="areaSizeSmall">小</span>
-        <input type="range" id="img-size-slider" min="0.7" max="1.3" step="0.01" value="1">
+        <input type="range" id="img-size-slider" min="1.0" max="1.6" step="0.01" value="1.3">
         <span class="img-size-endpoint" data-i18n-key="areaSizeLarge">大</span>
       </div>
     </div>
@@ -1069,15 +1069,22 @@
       const item = placedItems.find(i => i.id === itemId);
       if (!item) return;
       const el = document.getElementById(itemId); if (!el) return;
+      // Keep the item's on-field center point fixed across the resize
+      // (measure the actual old/new box from the DOM so this works whether
+      // or not a caption is present, rather than growing from the top-left).
+      const cx = item.x + el.offsetWidth  / 2;
+      const cy = item.y + el.offsetHeight / 2;
+
       const sz = iSz(item), w = dW(item);
-      const c = clampToField(item.x, item.y, w, sz + 20);
-      item.x = c.x; item.y = c.y;
-      el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
       el.style.width = w + 'px';
       const img = el.querySelector('img');
       if (img) { img.style.width = sz + 'px'; img.style.height = sz + 'px'; }
       const txt = el.querySelector('.placed-text');
       if (txt) txt.style.maxWidth = w + 'px';
+
+      const c = clampToField(cx - el.offsetWidth / 2, cy - el.offsetHeight / 2, el.offsetWidth, el.offsetHeight);
+      item.x = c.x; item.y = c.y;
+      el.style.left = item.x + 'px'; el.style.top = item.y + 'px';
     }
 
     // ===== 画像サイズ（スマホ限定。エリアサイズと違い、配置キャラ画像の基準サイズを変える）=====
@@ -1086,7 +1093,7 @@
       localStorage.setItem('imgSize', mult);
       placedItems.forEach(item => applyItemSize(item.id));
     }
-    const savedImgSize = parseFloat(localStorage.getItem('imgSize')) || 1;
+    const savedImgSize = parseFloat(localStorage.getItem('imgSize')) || 1.3;
     applyImgSize(savedImgSize);
     const imgSizeSlider = document.getElementById('img-size-slider');
     imgSizeSlider.value = savedImgSize;
@@ -1356,6 +1363,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v15</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v16</div>
 </body>
 </html>
