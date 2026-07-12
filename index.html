@@ -163,7 +163,7 @@
     #chart-card {
       position: relative;
       display: grid;
-      grid-template-columns: calc(var(--qsize) * 56 / 900) var(--qsize) calc(var(--qsize) * 56 / 900);
+      grid-template-columns: calc(var(--qsize) * 72 / 900) var(--qsize) calc(var(--qsize) * 72 / 900);
       grid-template-rows: auto auto var(--qsize) auto;
       gap: 10px;
       background: var(--surface);
@@ -212,7 +212,7 @@
     #chart-bottom-box { grid-row: 4; }
     .axis-box-v {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
-      grid-row: 3; width: calc(var(--qsize) * 56 / 900);
+      grid-row: 3; width: calc(var(--qsize) * 72 / 900);
       display: flex; align-items: center; justify-content: center;
       writing-mode: vertical-rl; text-orientation: upright;
       font-size: 1.35rem; font-weight: bold; color: #c8763a; letter-spacing: .05em;
@@ -347,9 +347,10 @@
       /* Shrink the chart card (title box, axis boxes, quadrant field) to fit
          the viewport width so nothing needs horizontal scrolling on a phone
          in portrait. 84px = #canvas-wrap padding (32) + #chart-card padding
-         (32) + its 2 column gaps (20); 1012/900 = chart-card width / --qsize. */
+         (32) + its 2 column gaps (20); 1044/900 = chart-card width / --qsize
+         (900 + 2 side columns of 72px each, at the qsize=900 baseline). */
       body[data-area-size] {
-        --qsize: min(900px, calc((100vw - 84px) * 900 / 1012));
+        --qsize: min(900px, calc((100vw - 84px) * 900 / 1044));
       }
     }
   </style>
@@ -1325,6 +1326,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v11</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v12</div>
 </body>
 </html>
