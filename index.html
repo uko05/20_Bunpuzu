@@ -193,24 +193,42 @@
     }
     #chart-title-box::placeholder { color: var(--muted); font-weight: bold; }
     #chart-title-box:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,204,0,.25); }
-    /* Always-visible dropdown affordance for the title's <input list>; purely
-       decorative (pointer-events:none, clicks pass through to the input) and
-       excluded from the exported image via data-html2canvas-ignore. Also
-       hidden when printing (browser print, not the PNG export above). */
+    /* Toggle affordance for the custom preset dropdown below (excluded from
+       the exported image via data-html2canvas-ignore, and from print). */
     #title-list-hint {
       position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
-      pointer-events: none; font-size: 1.4rem; font-weight: 900; color: #8a4a1f;
-      line-height: 1;
+      cursor: pointer; font-size: 1.4rem; font-weight: 900; color: #8a4a1f;
+      line-height: 1; transition: transform .15s ease;
     }
+    #title-list-hint.open { transform: translateY(-50%) rotate(180deg); }
     @media print {
       #title-list-hint { display: none !important; }
       /* The ▼ hint is hidden above, but its reserved right-side padding
          would still be there, pushing the centered text left. Even it out. */
       #chart-title-box { padding-left: 20px; padding-right: 20px; }
     }
-    /* Chromium shows its own hover-only dropdown indicator for <input list>;
-       hide it so only our always-visible ▼ is shown. */
-    #chart-title-box::-webkit-calendar-picker-indicator { display: none !important; }
+    /* ===== Custom preset dropdown (replaces native <input list>/<datalist>:
+       iOS Safari renders those in the cramped QuickType bar above the
+       keyboard instead of a real list, showing only 1-2 truncated items). */
+    #preset-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      max-height: 260px; overflow-y: auto;
+      background: var(--surface); border: 1.5px solid #e0b487; border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.18);
+      z-index: 50; padding: 6px;
+      opacity: 0; transform: translateY(-8px); pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    #preset-dropdown.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .preset-item {
+      padding: 9px 14px; border-radius: 7px; font-size: .85rem; color: var(--text);
+      cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background .12s ease;
+    }
+    .preset-item + .preset-item { margin-top: 2px; }
+    .preset-item:hover { background: rgba(255,204,0,.22); }
+    .preset-item:active { background: rgba(255,204,0,.4); }
+    .preset-empty { padding: 9px 14px; font-size: .8rem; color: var(--muted); }
     .axis-box-h {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
       padding: 2px 22px; font-size: 1.35rem; font-weight: bold; text-align: center;
@@ -528,10 +546,10 @@
     <div id="canvas-area">
       <div id="chart-card">
         <div id="chart-title-wrap">
-          <input id="chart-title-box" class="chart-field" type="text" list="preset-datalist"
+          <input id="chart-title-box" class="chart-field" type="text"
                  placeholder="タイトルを入力…" autocomplete="off">
-          <datalist id="preset-datalist" data-html2canvas-ignore="true"></datalist>
           <span id="title-list-hint" data-html2canvas-ignore="true">▼</span>
+          <div id="preset-dropdown" data-html2canvas-ignore="true"></div>
         </div>
         <div id="chart-top-box" class="chart-field axis-box-h" contenteditable="true" data-placeholder="上の軸ラベル"></div>
         <div id="chart-left-box" class="chart-field axis-box-v" contenteditable="true" data-placeholder="左の軸ラベル"></div>
@@ -727,7 +745,7 @@
       leftBox.dataset.placeholder   = d.leftPh;
       rightBox.dataset.placeholder  = d.rightPh;
       titleBox.placeholder = d.titlePh;
-      renderPresetDatalist();
+      if (presetDropdown.classList.contains('open')) renderPresetDropdown(titleBox.value);
     }
 
     document.querySelectorAll('input[name="lang"]').forEach(r => {
@@ -748,38 +766,81 @@
     });
 
     // ===== プリセット（ネタ）=====
-    // タイトル欄はネイティブの <input list> + <datalist> で「リストから選ぶ」も
-    // 「自由に手入力」も両方できるようにする。一覧から選んだ／一致するタイトルを
-    // 打ち込んだタイミングで、他の軸ラベルも自動で埋める。
-    const presetDatalist = document.getElementById('preset-datalist');
-    function renderPresetDatalist() {
-      presetDatalist.innerHTML = '';
-      PRESETS.forEach(p => {
-        const d = p[currentLang] || p.ja;
-        const opt = document.createElement('option');
-        opt.value = d.title;
-        presetDatalist.appendChild(opt);
-      });
-    }
+    // タイトル欄は自前のドロップダウンで「リストから選ぶ」も「自由に手入力」
+    // も両方できるようにする（元は <input list>+<datalist> だったが、iOS
+    // Safariが候補をキーボード上のQuickTypeバーに1〜2件しか出さず使いにくい
+    // ため、全端末共通の見た目・挙動になる自作パネルに置き換えた）。
+    const presetDropdown = document.getElementById('preset-dropdown');
+    const titleListHint  = document.getElementById('title-list-hint');
     function findPresetByTitle(title) {
       return PRESETS.find(p => {
         const d = p[currentLang] || p.ja;
         return d?.title === title;
       });
     }
-    titleBox.addEventListener('input', () => {
-      const preset = findPresetByTitle(titleBox.value.trim());
-      if (!preset) return;
-      const d = preset[currentLang] || preset.ja;
+    function fillFromPreset(d) {
       topBox.textContent    = d.top    || '';
       bottomBox.textContent = d.bottom || '';
       leftBox.textContent   = d.left   || '';
       rightBox.textContent  = d.right  || '';
+    }
+    function renderPresetDropdown(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      presetDropdown.innerHTML = '';
+      const matches = PRESETS
+        .map(p => p[currentLang] || p.ja)
+        .filter(d => !q || d.title.toLowerCase().includes(q));
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = 'preset-empty';
+        empty.textContent = currentLang === 'en' ? 'No matches' : '該当するネタがありません';
+        presetDropdown.appendChild(empty);
+        return;
+      }
+      matches.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'preset-item';
+        item.textContent = d.title;
+        item.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          titleBox.value = d.title;
+          fillFromPreset(d);
+          closePresetDropdown();
+        });
+        presetDropdown.appendChild(item);
+      });
+    }
+    function openPresetDropdown() {
+      renderPresetDropdown(titleBox.value);
+      presetDropdown.classList.add('open');
+      titleListHint.classList.add('open');
+    }
+    function closePresetDropdown() {
+      presetDropdown.classList.remove('open');
+      titleListHint.classList.remove('open');
+    }
+    titleBox.addEventListener('focus', openPresetDropdown);
+    titleBox.addEventListener('input', () => {
+      renderPresetDropdown(titleBox.value);
+      presetDropdown.classList.add('open');
+      const preset = findPresetByTitle(titleBox.value.trim());
+      if (preset) fillFromPreset(preset[currentLang] || preset.ja);
+    });
+    titleListHint.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (presetDropdown.classList.contains('open')) { closePresetDropdown(); titleBox.blur(); }
+      else { titleBox.focus(); }
+    });
+    document.addEventListener('pointerdown', e => {
+      if (!e.target.closest('#chart-title-wrap')) closePresetDropdown();
     });
 
-    // Enterで確定（改行禁止）、貼り付けはプレーンテキストのみ
+    // Enter/Escで確定・閉じる（改行禁止）、貼り付けはプレーンテキストのみ
     titleBox.addEventListener('pointerdown', e => e.stopPropagation());
-    titleBox.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); titleBox.blur(); } });
+    titleBox.addEventListener('blur', closePresetDropdown);
+    titleBox.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); titleBox.blur(); }
+    });
     [topBox, bottomBox, leftBox, rightBox].forEach(el => {
       el.addEventListener('pointerdown', e => e.stopPropagation());
       el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
@@ -1381,6 +1442,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v17</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v18</div>
 </body>
 </html>
