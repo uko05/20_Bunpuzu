@@ -228,7 +228,6 @@
     .preset-item + .preset-item { margin-top: 2px; }
     .preset-item:hover { background: rgba(255,204,0,.22); }
     .preset-item:active { background: rgba(255,204,0,.4); }
-    .preset-empty { padding: 9px 14px; font-size: .8rem; color: var(--muted); }
     .axis-box-h {
       background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
       padding: 2px 22px; font-size: 1.35rem; font-weight: bold; text-align: center;
@@ -745,7 +744,7 @@
       leftBox.dataset.placeholder   = d.leftPh;
       rightBox.dataset.placeholder  = d.rightPh;
       titleBox.placeholder = d.titlePh;
-      if (presetDropdown.classList.contains('open')) renderPresetDropdown(titleBox.value);
+      if (presetDropdown.classList.contains('open')) renderPresetDropdown();
     }
 
     document.querySelectorAll('input[name="lang"]').forEach(r => {
@@ -784,20 +783,13 @@
       leftBox.textContent   = d.left   || '';
       rightBox.textContent  = d.right  || '';
     }
-    function renderPresetDropdown(filter) {
-      const q = (filter || '').trim().toLowerCase();
+    // Always lists every preset, regardless of what's typed — the input's
+    // own text and the list are independent; typing only auto-fills on an
+    // exact match (below), it doesn't filter what the list shows.
+    function renderPresetDropdown() {
       presetDropdown.innerHTML = '';
-      const matches = PRESETS
-        .map(p => p[currentLang] || p.ja)
-        .filter(d => !q || d.title.toLowerCase().includes(q));
-      if (!matches.length) {
-        const empty = document.createElement('div');
-        empty.className = 'preset-empty';
-        empty.textContent = currentLang === 'en' ? 'No matches' : '該当するネタがありません';
-        presetDropdown.appendChild(empty);
-        return;
-      }
-      matches.forEach(d => {
+      PRESETS.forEach(p => {
+        const d = p[currentLang] || p.ja;
         const item = document.createElement('div');
         item.className = 'preset-item';
         item.textContent = d.title;
@@ -813,8 +805,8 @@
         presetDropdown.appendChild(item);
       });
     }
-    function openPresetDropdown(filter) {
-      renderPresetDropdown(filter);
+    function openPresetDropdown() {
+      renderPresetDropdown();
       presetDropdown.classList.add('open');
       titleListHint.classList.add('open');
     }
@@ -822,19 +814,16 @@
       presetDropdown.classList.remove('open');
       titleListHint.classList.remove('open');
     }
-    titleBox.addEventListener('focus', () => openPresetDropdown(titleBox.value));
+    titleBox.addEventListener('focus', openPresetDropdown);
     titleBox.addEventListener('input', () => {
-      openPresetDropdown(titleBox.value);
+      openPresetDropdown();
       const preset = findPresetByTitle(titleBox.value.trim());
       if (preset) fillFromPreset(preset[currentLang] || preset.ja);
     });
     titleListHint.addEventListener('pointerdown', e => {
       e.preventDefault();
       if (presetDropdown.classList.contains('open')) { closePresetDropdown(); titleBox.blur(); }
-      // Always show the full list here (not filtered by the current value)
-      // — e.g. after picking a preset, pressing ▼ again should offer every
-      // option again, not just the one that happens to match what's typed.
-      else { titleBox.focus(); openPresetDropdown(''); }
+      else { titleBox.focus(); openPresetDropdown(); }
     });
     document.addEventListener('pointerdown', e => {
       if (!e.target.closest('#chart-title-wrap')) closePresetDropdown();
@@ -1446,6 +1435,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v19</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v20</div>
 </body>
 </html>
