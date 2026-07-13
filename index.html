@@ -801,8 +801,11 @@
         const item = document.createElement('div');
         item.className = 'preset-item';
         item.textContent = d.title;
-        item.addEventListener('pointerdown', e => {
-          e.preventDefault();
+        // 'click' (not pointerdown) so a touch-drag-to-scroll the list isn't
+        // hijacked as a tap; browsers only fire click after a tap that didn't
+        // move/scroll. Also avoids needing preventDefault, which would have
+        // blocked native scrolling of this list on mobile.
+        item.addEventListener('click', () => {
           titleBox.value = d.title;
           fillFromPreset(d);
           closePresetDropdown();
@@ -810,8 +813,8 @@
         presetDropdown.appendChild(item);
       });
     }
-    function openPresetDropdown() {
-      renderPresetDropdown(titleBox.value);
+    function openPresetDropdown(filter) {
+      renderPresetDropdown(filter);
       presetDropdown.classList.add('open');
       titleListHint.classList.add('open');
     }
@@ -819,17 +822,19 @@
       presetDropdown.classList.remove('open');
       titleListHint.classList.remove('open');
     }
-    titleBox.addEventListener('focus', openPresetDropdown);
+    titleBox.addEventListener('focus', () => openPresetDropdown(titleBox.value));
     titleBox.addEventListener('input', () => {
-      renderPresetDropdown(titleBox.value);
-      presetDropdown.classList.add('open');
+      openPresetDropdown(titleBox.value);
       const preset = findPresetByTitle(titleBox.value.trim());
       if (preset) fillFromPreset(preset[currentLang] || preset.ja);
     });
     titleListHint.addEventListener('pointerdown', e => {
       e.preventDefault();
       if (presetDropdown.classList.contains('open')) { closePresetDropdown(); titleBox.blur(); }
-      else { titleBox.focus(); }
+      // Always show the full list here (not filtered by the current value)
+      // — e.g. after picking a preset, pressing ▼ again should offer every
+      // option again, not just the one that happens to match what's typed.
+      else { titleBox.focus(); openPresetDropdown(''); }
     });
     document.addEventListener('pointerdown', e => {
       if (!e.target.closest('#chart-title-wrap')) closePresetDropdown();
@@ -837,9 +842,8 @@
 
     // Enter/Escで確定・閉じる（改行禁止）、貼り付けはプレーンテキストのみ
     titleBox.addEventListener('pointerdown', e => e.stopPropagation());
-    titleBox.addEventListener('blur', closePresetDropdown);
     titleBox.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); titleBox.blur(); }
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); closePresetDropdown(); titleBox.blur(); }
     });
     [topBox, bottomBox, leftBox, rightBox].forEach(el => {
       el.addEventListener('pointerdown', e => e.stopPropagation());
@@ -1442,6 +1446,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v18</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v19</div>
 </body>
 </html>
