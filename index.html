@@ -621,9 +621,29 @@
   <script type="module">
     import { genshinChars }  from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_data/genshin_chars.js';
     import { starrailChars } from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_data/starrail_chars.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
     const GENSHIN_BASE  = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_full/';
     const STARRAIL_BASE = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_full/';
+
+    // ===== お題データ収集（他サイトと共用の genshin-bakatare01 プロジェクト）=====
+    // 手入力されたオリジナルのお題（PRESETSに一致しないタイトル）を保存画像DL時に収集し、
+    // 将来プリセットを増やすための元ネタにする。失敗しても保存処理は止めない。
+    const firebaseApp = initializeApp({
+      apiKey: "AIzaSyCP4QfMGDDBSI8VDERnESBOlHpUhy7wGPk",
+      authDomain: "genshin-bakatare01.firebaseapp.com",
+      projectId: "genshin-bakatare01",
+      storageBucket: "genshin-bakatare01.firebasestorage.app",
+      messagingSenderId: "658089418604",
+      appId: "1:658089418604:web:288c06b331da8c4f789d49"
+    });
+    const odaiDb = getFirestore(firebaseApp);
+    async function submitCustomOdai(d) {
+      try {
+        await addDoc(collection(odaiDb, 'bunpuzuOdai'), { ...d, createdAt: serverTimestamp() });
+      } catch (e) { console.error('お題の送信に失敗', e); }
+    }
 
     // ===== ネタ（プリセット）=====
     // 中身は後で追加していく想定。key:'custom' は「手入力」の目印で、選んでも既存の入力内容は消さない。
@@ -1318,6 +1338,19 @@
     document.getElementById('save-btn').addEventListener('click', async () => {
       closePopup(); closeTextEdit();
       document.activeElement?.blur();
+
+      // Custom (non-preset) titles are the ones worth collecting — matched
+      // presets are already known and don't need re-submitting.
+      const typedTitle = titleBox.value.trim();
+      if (typedTitle && !findPresetByTitle(typedTitle)) {
+        submitCustomOdai({
+          title: typedTitle,
+          top: topBox.textContent.trim(), bottom: bottomBox.textContent.trim(),
+          left: leftBox.textContent.trim(), right: rightBox.textContent.trim(),
+          lang: currentLang,
+        });
+      }
+
       const chartCard = document.getElementById('chart-card');
       await document.fonts.ready;
       try {
@@ -1441,6 +1474,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v21</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v22</div>
 </body>
 </html>
