@@ -631,6 +631,7 @@
     import { starrailChars } from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_data/starrail_chars.js';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
     import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 
     const GENSHIN_BASE  = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_full/';
     const STARRAIL_BASE = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_full/';
@@ -646,10 +647,18 @@
       messagingSenderId: "658089418604",
       appId: "1:658089418604:web:288c06b331da8c4f789d49"
     });
-    const odaiDb = getFirestore(firebaseApp);
-    async function submitCustomOdai(d) {
+    const odaiDb      = getFirestore(firebaseApp);
+    const odaiStorage = getStorage(firebaseApp);
+    async function submitCustomOdai(d, imageDataUrl) {
       try {
-        await addDoc(collection(odaiDb, 'bunpuzuOdai'), { ...d, createdAt: serverTimestamp() });
+        let imageUrl = null;
+        if (imageDataUrl) {
+          const path = `bunpuzuOdai/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
+          const fileRef = ref(odaiStorage, path);
+          await uploadString(fileRef, imageDataUrl, 'data_url');
+          imageUrl = await getDownloadURL(fileRef);
+        }
+        await addDoc(collection(odaiDb, 'bunpuzuOdai'), { ...d, imageUrl, createdAt: serverTimestamp() });
       } catch (e) { console.error('お題の送信に失敗', e); }
     }
 
@@ -1353,13 +1362,7 @@
       const odaiTop = topBox.textContent.trim(), odaiBottom = bottomBox.textContent.trim();
       const odaiLeft = leftBox.textContent.trim(), odaiRight = rightBox.textContent.trim();
       const isKnownPreset = typedTitle && findPresetByTitle(typedTitle);
-      if (odaiTop && odaiBottom && odaiLeft && odaiRight && !isKnownPreset) {
-        submitCustomOdai({
-          title: typedTitle,
-          top: odaiTop, bottom: odaiBottom, left: odaiLeft, right: odaiRight,
-          lang: currentLang,
-        });
-      }
+      const shouldSubmitOdai = odaiTop && odaiBottom && odaiLeft && odaiRight && !isKnownPreset;
 
       const chartCard = document.getElementById('chart-card');
       await document.fonts.ready;
@@ -1379,8 +1382,17 @@
         const now = new Date(), padN = n => String(n).padStart(2, '0');
         const ts = `${now.getFullYear()}${padN(now.getMonth()+1)}${padN(now.getDate())}_`
                  + `${padN(now.getHours())}${padN(now.getMinutes())}${padN(now.getSeconds())}`;
+        const imageDataUrl = cvs.toDataURL('image/png');
         const a = document.createElement('a');
-        a.download = `分布図_${ts}.png`; a.href = cvs.toDataURL('image/png'); a.click();
+        a.download = `分布図_${ts}.png`; a.href = imageDataUrl; a.click();
+
+        if (shouldSubmitOdai) {
+          submitCustomOdai({
+            title: typedTitle,
+            top: odaiTop, bottom: odaiBottom, left: odaiLeft, right: odaiRight,
+            lang: currentLang,
+          }, imageDataUrl);
+        }
       } catch (err) { alert('保存に失敗しました: ' + err.message); }
     });
 
@@ -1484,6 +1496,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v24</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v25</div>
 </body>
 </html>
