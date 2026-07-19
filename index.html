@@ -1347,14 +1347,16 @@
       closePopup(); closeTextEdit();
       document.activeElement?.blur();
 
-      // Custom (non-preset) titles are the ones worth collecting — matched
-      // presets are already known and don't need re-submitting.
+      // The 4 axis labels are the minimum bar for collecting — title is
+      // optional, but skip if it matches an existing preset (already known).
       const typedTitle = titleBox.value.trim();
-      if (typedTitle && !findPresetByTitle(typedTitle)) {
+      const odaiTop = topBox.textContent.trim(), odaiBottom = bottomBox.textContent.trim();
+      const odaiLeft = leftBox.textContent.trim(), odaiRight = rightBox.textContent.trim();
+      const isKnownPreset = typedTitle && findPresetByTitle(typedTitle);
+      if (odaiTop && odaiBottom && odaiLeft && odaiRight && !isKnownPreset) {
         submitCustomOdai({
           title: typedTitle,
-          top: topBox.textContent.trim(), bottom: bottomBox.textContent.trim(),
-          left: leftBox.textContent.trim(), right: rightBox.textContent.trim(),
+          top: odaiTop, bottom: odaiBottom, left: odaiLeft, right: odaiRight,
           lang: currentLang,
         });
       }
@@ -1482,6 +1484,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v23</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v24</div>
 </body>
 </html>
