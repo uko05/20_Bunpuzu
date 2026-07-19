@@ -154,6 +154,12 @@
     }
     #save-btn:hover { opacity: .8; }
 
+    /* ===== Top controls (pinned to viewport top while scrolling) ===== */
+    #top-controls {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--bg);
+    }
+
     /* ===== Canvas wrap ===== */
     #canvas-wrap { flex: 1; overflow: auto; background: var(--bg); padding: 24px; min-height: 0; }
     #canvas-area {
@@ -1435,6 +1441,6 @@
 
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v20</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v21</div>
 </body>
 </html>
