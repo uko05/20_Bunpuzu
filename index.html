@@ -408,6 +408,50 @@
       .axis-box-v { width: 30px; }
       #chart-card { grid-template-columns: 30px var(--qsize) 30px; }
     }
+
+    /* ===== 前回保存した画像を確認 ===== */
+    .uko-saved-image-wrap {
+      padding: 6px 10px;
+    }
+    .uko-saved-image-toggle {
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .uko-saved-image-toggle:hover { opacity: .8; }
+    .uko-saved-image-panel { margin-top: 8px; }
+    .uko-saved-image-date { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+    .uko-saved-image-message { margin: 0; font-size: 12px; color: var(--muted); }
+    .uko-saved-image-message a { color: var(--accent); text-decoration: underline; }
+    .uko-saved-image-img {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .uko-saved-image-modal {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .uko-saved-image-modal-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.7); }
+    .uko-saved-image-modal-content {
+      position: relative; max-width: 95vw; max-height: 90vh; overflow: auto;
+      background: #fff; padding: 10px; border-radius: 8px;
+    }
+    .uko-saved-image-modal-content img { display: block; max-width: none; }
+    .uko-saved-image-modal-close {
+      position: absolute; top: 6px; right: 6px; width: 30px; height: 30px;
+      border-radius: 50%; border: none; background: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); cursor: pointer;
+      font-size: 18px; line-height: 1; z-index: 1;
+    }
   </style>
 </head>
 <body>
@@ -555,6 +599,23 @@
   </div>
   </div><!-- /#top-controls -->
 
+  <div class="uko-saved-image-wrap" id="uko-saved-image-wrap">
+    <button type="button" class="uko-saved-image-toggle" id="uko-saved-image-toggle">前回保存した画像を確認 <span class="uko-saved-image-arrow" id="uko-saved-image-arrow">▼</span></button>
+    <div class="uko-saved-image-panel" id="uko-saved-image-panel" style="display:none;">
+      <p class="uko-saved-image-message" id="uko-saved-image-message"></p>
+      <p class="uko-saved-image-date" id="uko-saved-image-date"></p>
+      <img class="uko-saved-image-img" id="uko-saved-image-img" src="" alt="">
+    </div>
+  </div>
+
+  <div class="uko-saved-image-modal" id="uko-saved-image-modal" style="display:none;">
+    <div class="uko-saved-image-modal-backdrop"></div>
+    <div class="uko-saved-image-modal-content">
+      <button type="button" class="uko-saved-image-modal-close" id="uko-saved-image-modal-close">×</button>
+      <img id="uko-saved-image-modal-img" src="" alt="">
+    </div>
+  </div>
+
   <!-- Canvas -->
   <div id="canvas-wrap">
     <div id="canvas-area">
@@ -630,7 +691,14 @@
   <script type="module">
     import { genshinChars }  from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_data/genshin_chars.js';
     import { starrailChars } from 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/02_Starrail/chara_data/starrail_chars.js';
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    // firebaseConfig.js を先に評価してデフォルトAppを確立してから saved-image.js を
+    // importすること(順序が逆だとログイン状態が正しく共有されない。saved-image.js
+    // のコメント参照)。お題収集用のFirebase Appは従来このファイル内で直接
+    // initializeAppしていたが、firebaseConfig.jsに切り出して共通化した。
+    import { app as firebaseApp } from './firebaseConfig.js';
+    import {
+      onAccountAuthState, saveProfileImage, getSavedProfileImage, formatSavedAt,
+    } from 'https://uko05.github.io/24_AccountCenter/saved-image.js';
     import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
     const GENSHIN_BASE  = 'https://cdn.jsdelivr.net/gh/uko05/99_SharedImage@main/01_Genshin/chara_full/';
@@ -639,20 +707,93 @@
     // ===== お題データ収集（他サイトと共用の genshin-bakatare01 プロジェクト）=====
     // 手入力されたオリジナルのお題（PRESETSに一致しないタイトル）を保存画像DL時に収集し、
     // 将来プリセットを増やすための元ネタにする。失敗しても保存処理は止めない。
-    const firebaseApp = initializeApp({
-      apiKey: "AIzaSyCP4QfMGDDBSI8VDERnESBOlHpUhy7wGPk",
-      authDomain: "genshin-bakatare01.firebaseapp.com",
-      projectId: "genshin-bakatare01",
-      storageBucket: "genshin-bakatare01.firebasestorage.app",
-      messagingSenderId: "658089418604",
-      appId: "1:658089418604:web:288c06b331da8c4f789d49"
-    });
     const odaiDb = getFirestore(firebaseApp);
     async function submitCustomOdai(d) {
       try {
         await addDoc(collection(odaiDb, 'bunpuzuOdai'), { ...d, createdAt: serverTimestamp() });
       } catch (e) { console.error('お題の送信に失敗', e); }
     }
+
+    // ===== 前回保存した画像を確認(saved-image.js連携) =====
+    const SITE_ID = 'bunpuzu';
+    let refreshSavedImageUI = () => {};
+
+    function savedImageLang() {
+      return document.querySelector('input[name="lang"]:checked')?.value || localStorage.getItem('lang') || 'ja';
+    }
+
+    const SAVED_IMAGE_NOT_LOGGED_IN_HTML = {
+      ja: 'アカウント登録すると、ここで前回保存した画像を確認できます。<a href="https://uko05.github.io/24_AccountCenter/" target="_blank" rel="noopener">登録はこちら（任意）</a>',
+      en: 'Register an account to see your last saved image here. <a href="https://uko05.github.io/24_AccountCenter/" target="_blank" rel="noopener">Register here (optional)</a>',
+    };
+    const SAVED_IMAGE_NO_HISTORY_HTML = {
+      ja: '画像を保存すると、ここに表示されます。',
+      en: 'Once you save an image, it will appear here.',
+    };
+
+    // 「前回保存した画像を確認」トグルの初期化。
+    // 未登録者にも常に表示し(登録を後押しするため)、状態に応じてメッセージ/画像を切り替える。
+    function initSavedImageUI() {
+      const toggle = document.getElementById('uko-saved-image-toggle');
+      const panel = document.getElementById('uko-saved-image-panel');
+      const messageEl = document.getElementById('uko-saved-image-message');
+      const dateEl = document.getElementById('uko-saved-image-date');
+      const imgEl = document.getElementById('uko-saved-image-img');
+      const modal = document.getElementById('uko-saved-image-modal');
+      const modalImg = document.getElementById('uko-saved-image-modal-img');
+      const modalClose = document.getElementById('uko-saved-image-modal-close');
+      const arrowEl = document.getElementById('uko-saved-image-arrow');
+      if (!toggle || !panel || !messageEl || !dateEl || !imgEl) return;
+
+      toggle.addEventListener('click', () => {
+        const willOpen = panel.style.display === 'none';
+        panel.style.display = willOpen ? 'block' : 'none';
+        if (arrowEl) arrowEl.textContent = willOpen ? '▲' : '▼';
+      });
+
+      // サムネイルは元画像の30%サイズで表示する
+      imgEl.addEventListener('load', () => {
+        imgEl.style.width = `${imgEl.naturalWidth * 0.3}px`;
+      });
+      // クリックで原寸(100%)ポップアップ表示
+      imgEl.addEventListener('click', () => {
+        if (!modal || !modalImg) return;
+        modalImg.src = imgEl.src;
+        modal.style.display = 'flex';
+      });
+      modalClose?.addEventListener('click', () => { modal.style.display = 'none'; });
+      modal?.querySelector('.uko-saved-image-modal-backdrop')?.addEventListener('click', () => { modal.style.display = 'none'; });
+
+      let loggedIn = false;
+
+      function showMessage(html) {
+        messageEl.innerHTML = html;
+        messageEl.style.display = 'block';
+        dateEl.style.display = 'none';
+        imgEl.style.display = 'none';
+      }
+
+      async function refresh() {
+        if (!loggedIn) {
+          showMessage(SAVED_IMAGE_NOT_LOGGED_IN_HTML[savedImageLang()]);
+          return;
+        }
+        const entry = await getSavedProfileImage(SITE_ID);
+        if (entry) {
+          messageEl.style.display = 'none';
+          dateEl.style.display = 'block';
+          imgEl.style.display = 'block';
+          dateEl.textContent = formatSavedAt(entry.updatedAt);
+          imgEl.src = entry.url;
+        } else {
+          showMessage(SAVED_IMAGE_NO_HISTORY_HTML[savedImageLang()]);
+        }
+      }
+      refreshSavedImageUI = refresh;
+      onAccountAuthState((user) => { loggedIn = !!user; refresh(); });
+      document.querySelectorAll('input[name="lang"]').forEach((el) => el.addEventListener('change', refresh));
+    }
+    document.addEventListener('DOMContentLoaded', initSavedImageUI);
 
     // ===== ネタ（プリセット）=====
     // 中身は後で追加していく想定。key:'custom' は「手入力」の目印で、選んでも既存の入力内容は消さない。
@@ -1382,6 +1523,11 @@
                  + `${padN(now.getHours())}${padN(now.getMinutes())}${padN(now.getSeconds())}`;
         const a = document.createElement('a');
         a.download = `分布図_${ts}.png`; a.href = cvs.toDataURL('image/png'); a.click();
+
+        // アカウント登録者ならクラウドにも保存(失敗しても無視、ローカル保存は継続)
+        cvs.toBlob((blob) => {
+          if (blob) saveProfileImage(SITE_ID, blob).then(() => refreshSavedImageUI());
+        }, 'image/png');
       } catch (err) { alert('保存に失敗しました: ' + err.message); }
     });
 
@@ -1486,6 +1632,6 @@
   <script src="https://uko05.github.io/TopPage00/shared/sidebar.js"></script>
   <script type="module" src="https://uko05.github.io/24_AccountCenter/account-status.js"></script>
 
-  <div id="version-tag" data-html2canvas-ignore="true">v26</div>
+  <div id="version-tag" data-html2canvas-ignore="true">v27</div>
 </body>
 </html>
